@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RDR2 Poker Helper (Texas Hold’em)</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #222; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  legend { padding: 0 8px; font-weight: 600; }
+  label { display: block; margin: 8px 0 4px; font-weight: 600; }
+  input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+  .row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .btn { margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 0; background: #0d6efd; color: #fff; cursor: pointer; }
+  .btn:disabled { background: #999; cursor: not-allowed; }
+  .result { padding: 12px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; margin-right: 6px; font-size: 0.85rem; }
+  .hint { color: #555; font-size: 0.9rem; }
+  code { background: #f0f0f0; padding: 1px 4px; border-radius: 4px; }
+  .card-cheatsheet {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 0.95rem; /* base size */
+}
+
+.card-cheatsheet strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.card-cheatsheet ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Responsive scaling */
+@media (max-width: 900px) {
+  .card-cheatsheet { font-size: 0.85rem; }
+}
+@media (max-width: 600px) {
+  .card-cheatsheet { 
+    grid-template-columns: repeat(2, 1fr); /* stack into 2 columns */
+    font-size: 0.8rem;
+  }
+}
+@media (max-width: 400px) {
+  .card-cheatsheet { 
+    grid-template-columns: 1fr; /* stack into 1 column */
+    font-size: 0.75rem;
+  }
+}
+</style>
+</head>
+<body>
+  <h1>RDR2 Poker Helper (Texas Hold’em)</h1>
+  <p class="hint">Enter the table state. The helper uses preflop ranges, made-hand checks, draw detection, and pot odds to suggest Fold / Call / Raise.</p>
+  
+ <div class="card-cheatsheet">
+  <div>
+    <strong>♠ Spades</strong>
+    <ul><li>2s</li><li>3s</li><li>4s</li><li>5s</li><li>6s</li>
+        <li>7s</li><li>8s</li><li>9s</li><li>Ts</li><li>Js</li>
+        <li>Qs</li><li>Ks</li><li>As</li></ul>
+  </div>
+  <div>
+    <strong>♥ Hearts</strong>
+    <ul><li>2h</li><li>3h</li><li>4h</li><li>5h</li><li>6h</li>
+        <li>7h</li><li>8h</li><li>9h</li><li>Th</li><li>Jh</li>
+        <li>Qh</li><li>Kh</li><li>Ah</li></ul>
+  </div>
+  <div>
+    <strong>♦ Diamonds</strong>
+    <ul><li>2d</li><li>3d</li><li>4d</li><li>5d</li><li>6d</li>
+        <li>7d</li><li>8d</li><li>9d</li><li>Td</li><li>Jd</li>
+        <li>Qd</li><li>Kd</li><li>Ad</li></ul>
+  </div>
+  <div>
+    <strong>♣ Clubs</strong>
+    <ul><li>2c</li><li>3c</li><li>4c</li><li>5c</li><li>6c</li>
+        <li>7c</li><li>8c</li><li>9c</li><li>Tc</li><li>Jc</li>
+        <li>Qc</li><li>Kc</li><li>Ac</li></ul>
+  </div>
+</div>
+
+  <form id="pokerForm">
+    <fieldset>
+      <legend>Table and street</legend>
+      <div class="row">
+        <div>
+          <label for="players">Number of players</label>
+          <input id="players" type="number" min="2" max="10" value="4"/>
+        </div>
+        <div>
+          <label for="position">Your position</label>
+          <select id="position">
+            <option value="EP">Early (UTG/UTG+1)</option>
+            <option value="MP" selected>Middle</option>
+            <option value="LP">Late (CO/Button)</option>
+            <option value="SB">Small Blind</option>
+            <option value="BB">Big Blind</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="street">Street</label>
+          <select id="street">
+            <option value="preflop" selected>Preflop</option>
+            <option value="flop">Flop</option>
+            <option value="turn">Turn</option>
+            <option value="river">River</option>
+          </select>
+        </div>
+        <div>
+          <label for="pot">Current pot (chips or $)</label>
+          <input id="pot" type="number" min="0" step="0.01" value="0"/>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Your cards</legend>
+      <div class="row">
+        <div>
+          <label for="hole1">Hole card 1 (e.g., As)</label>
+          <input id="hole1" placeholder="As, Kh, 7d, etc." />
+        </div>
+        <div>
+          <label for="hole2">Hole card 2</label>
+          <input id="hole2" placeholder="Kh, Qs, 2c, etc." />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Board cards (as needed)</legend>
+      <div class="row">
+        <div>
+          <label for="flop1">Flop 1</label>
+          <input id="flop1" placeholder="e.g., 9h"/>
+        </div>
+        <div>
+          <label for="flop2">Flop 2</label>
+          <input id="flop2" placeholder="e.g., Th"/>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="flop3">Flop 3</label>
+          <input id="flop3" placeholder="e.g., Jh"/>
+        </div>
+        <div>
+          <label for="turn">Turn</label>
+          <input id="turn" placeholder="e.g., Qh"/>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="river">River</label>
+          <input id="river" placeholder="e.g., Kh"/>
+        </div>
+        <div>
+          <label for="betToCall">Bet to call</label>
+          <input id="betToCall" type="number" min="0" step="0.01" value="0"/>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Action preferences</legend>
+      <div class="row">
+        <div>
+          <label for="plannedRaise">Planned raise size</label>
+          <input id="plannedRaise" type="number" min="0" step="0.01" value="0"/>
+        </div>
+        <div>
+          <label for="aggression">Aggression (0=tight, 1=std, 2=loose)</label>
+          <select id="aggression">
+            <option value="0">0 (tight)</option>
+            <option value="1" selected>1 (standard)</option>
+            <option value="2">2 (loose)</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <button class="btn" type="button" id="recommendBtn">Get recommendation</button>
+  </form>
+
+  <div class="result" id="result" style="margin-top:16px; display:none"></div>
+
+<script>
+/* ===== Card parsing helpers ===== */
+const rankOrder = "23456789TJQKA".split("");
+const suits = ["s","h","d","c"];
+
+function parseCard(s) {
+  if (!s) return null;
+  s = s.trim().toUpperCase();
+  // Accept formats like "As" or "A S" or "A♠" simplified to As
+  s = s.replace(/\s+/g, "");
+  const r = s[0];
+  const rawSuit = s[1]?.toLowerCase();
+  const rOk = "23456789TJQKA".includes(r);
+  const sOk = suits.includes(rawSuit);
+  if (!rOk || !sOk) return null;
+  return { r, s: rawSuit };
+}
+
+function rankValue(r) { return rankOrder.indexOf(r); }
+
+/* ===== Range model (simple, tunable) ===== */
+const openRanges = {
+  EP: new Set([
+    "AA","KK","QQ","JJ","TT","AKs","AQs","AJs","KQs","AKo","AQo","99"
+  ]),
+  MP: new Set([
+    "AA","KK","QQ","JJ","TT","99","88","AKs","AQs","AJs","ATs","KQs","KJs",
+    "QJs","AKo","AQo","AJo"
+  ]),
+  LP: new Set([
+    "AA","KK","QQ","JJ","TT","99","88","77","AKs","AQs","AJs","ATs","A9s",
+    "KQs","KJs","KTs","QJs","QTs","JTs","T9s","98s","AKo","AQo","AJo","ATo","KQo"
+  ]),
+  SB: new Set([
+    "AA","KK","QQ","JJ","TT","99","88","AKs","AQs","AJs","ATs","KQs","QJs","AKo","AQo","AJo"
+  ]),
+  BB: new Set([
+    "AA","KK","QQ","JJ","TT","99","88","77","66","AKs","AQs","AJs","ATs",
+    "KQs","KJs","QJs","JTs","T9s","98s","AKo","AQo","AJo","ATo","KQo"
+  ])
+};
+
+function comboTag(c1, c2) {
+  const r1 = c1.r, r2 = c2.r;
+  const suited = c1.s === c2.s ? "s" : "o";
+  const hi = rankValue(r1) >= rankValue(r2) ? r1 : r2;
+  const lo = hi === r1 ? r2 : r1;
+  if (r1 === r2) return r1 + r2; // pairs
+  return hi + lo + suited;
+}
+
+/* ===== Postflop evaluation (basic) ===== */
+function evaluateMadeHand(cards) {
+  // cards: array of {r,s}, length 5-7
+  const bySuit = { s:0, h:0, d:0, c:0 };
+  const counts = {};
+  const values = cards.map(c => rankValue(c.r)).sort((a,b)=>a-b);
+  cards.forEach(c => { bySuit[c.s]++; counts[c.r] = (counts[c.r]||0)+1; });
+
+  const maxSuit = Math.max(bySuit.s, bySuit.h, bySuit.d, bySuit.c);
+  const isFlush = maxSuit >= 5;
+
+  const uniqVals = [...new Set(values)];
+  let straight = false;
+  if (uniqVals.length >= 5) {
+    // check straight, including A-low (A-2-3-4-5)
+    for (let i=0;i<=uniqVals.length-5;i++){
+      if (uniqVals[i]+1===uniqVals[i+1] && uniqVals[i]+2===uniqVals[i+2] &&
+          uniqVals[i]+3===uniqVals[i+3] && uniqVals[i]+4===uniqVals[i+4]) { straight = true; break; }
+    }
+    // Wheel: A(12), 0,1,2,3
+    const hasA = uniqVals.includes(12);
+    const hasWheel = hasA && uniqVals.includes(0) && uniqVals.includes(1) &&
+                     uniqVals.includes(2) && uniqVals.includes(3);
+    if (hasWheel) straight = true;
+  }
+
+  const freq = Object.values(counts).sort((a,b)=>b-a);
+  const hasTrips = freq.includes(3);
+  const pairs = freq.filter(x=>x===2).length;
+  const hasFour = freq.includes(4);
+
+  if (isFlush && straight) return { cat: "Straight flush", strength: 7 };
+  if (hasFour) return { cat: "Four of a kind", strength: 6 };
+  if (hasTrips && pairs>=1) return { cat: "Full house", strength: 5 };
+  if (isFlush) return { cat: "Flush", strength: 4 };
+  if (straight) return { cat: "Straight", strength: 3 };
+  if (hasTrips) return { cat: "Three of a kind", strength: 2 };
+  if (pairs>=2) return { cat: "Two pair", strength: 1.5 };
+  if (pairs>=1) return { cat: "One pair", strength: 1 };
+  return { cat: "High card", strength: 0 };
+}
+
+function detectDraws(cards) {
+  // Basic draw detection: flush draw, OESD, gutshot
+  const bySuit = { s:0, h:0, d:0, c:0 };
+  cards.forEach(c => bySuit[c.s]++);
+  const flushDraw = Object.values(bySuit).some(cnt => cnt === 4);
+
+  const values = cards.map(c => rankValue(c.r)).sort((a,b)=>a-b);
+  const uniqVals = [...new Set(values)];
+  let oesd = false, gutshot = false;
+
+  // Check sequences with board cards; crude but serviceable
+  for (let i=0;i<=uniqVals.length-4;i++){
+    const a=uniqVals[i], b=uniqVals[i+1], c=uniqVals[i+2], d=uniqVals[i+3];
+    if (a+1===b && b+1===c) {
+      if (c+1===d) {
+        // 4 in a row -> OESD or made straight
+        oesd = true;
+      } else if (c+2===d) {
+        gutshot = true;
+      }
+    }
+  }
+  // Wheel patterns (A as 12)
+  const hasA = uniqVals.includes(12);
+  if (hasA) {
+    const low = [0,1,2,3].filter(v => uniqVals.includes(v)).length;
+    if (low === 3) gutshot = true;
+    if (low === 4) oesd = true;
+  }
+  return { flushDraw, oesd, gutshot };
+}
+
+/* ===== Pot odds and outs ===== */
+function potOdds(pot, betToCall) {
+  if (betToCall <= 0) return 0;
+  return betToCall / (pot + betToCall);
+}
+
+function outsToEquity(outs, street) {
+  // Approximate equity to river from current street
+  // Flop: ~ (outs * 4)%, Turn: ~ (outs * 2)%
+  if (street === "flop") return Math.min(1, (outs * 0.04));
+  if (street === "turn") return Math.min(1, (outs * 0.02));
+  return 0;
+}
+
+function countOuts(draws, made) {
+  // Simplified outs: flush draw ~9, OESD ~8, gutshot ~4, pair improving ~? (ignored here)
+  let outs = 0;
+  if (draws.flushDraw) outs = Math.max(outs, 9);
+  if (draws.oesd) outs = Math.max(outs, 8);
+  if (draws.gutshot) outs = Math.max(outs, 4);
+  // If already strong (pair+), we could add boat/quad outs; keep simple
+  return outs;
+}
+
+/* ===== Action logic ===== */
+function recommendAction(state) {
+  const { street, players, position, hole, board, pot, betToCall, plannedRaise, aggression } = state;
+
+  // Validate hole cards
+  if (!hole[0] || !hole[1]) return { action: "Input needed", why: "Enter both hole cards.", tags: [] };
+
+  // Build all cards for postflop
+  const allCards = [...hole, ...board.filter(Boolean)];
+
+  if (street === "preflop") {
+    const tag = comboTag(hole[0], hole[1]);
+    const range = openRanges[position];
+    const inRange = range.has(tag);
+    // Continuation vs facing bet simplified: if betToCall>0, tighten
+    const facingBet = betToCall > 0;
+    if (!facingBet) {
+      if (inRange) return { action: "Raise", why: `Opening ${tag} from ${position}.`, tags: ["Preflop", tag, position] };
+      return { action: "Fold", why: `Too weak to open ${tag} from ${position}.`, tags: ["Preflop", tag, position] };
+    } else {
+      // Facing a raise: call/3-bet the top, fold marginal
+      const premium = ["AA","KK","QQ","JJ","AKs","AQs","AKo"];
+      if (premium.includes(tag)) {
+        return { action: "Raise", why: `3-bet premium ${tag} vs raise.`, tags: ["Preflop", tag, "VsRaise"] };
+      }
+      if (inRange && players <= 4 && aggression >= 1) {
+        return { action: "Call", why: `Defend ${tag} vs raise in small field.`, tags: ["Preflop", tag, "Defend"] };
+      }
+      return { action: "Fold", why: `Fold ${tag} vs raise from ${position}.`, tags: ["Preflop", tag, "Tight"] };
+    }
+  }
+
+  // Postflop
+  if (allCards.length < 5 && street !== "river") {
+    return { action: "Input needed", why: "Add board cards for flop/turn.", tags: ["Postflop"] };
+  }
+
+  const made = evaluateMadeHand(allCards);
+  const draws = detectDraws(allCards);
+  const facingBet = betToCall > 0;
+
+  // Simple thresholds by made-hand strength
+  const strongMade = made.strength >= 2; // trips+ or two pair+ (1.5) — set threshold at 2
+  const mediumMade = made.strength >= 1 && made.strength < 2; // one pair / two pair
+  const hasDraw = draws.flushDraw || draws.oesd || draws.gutshot;
+
+  if (!facingBet) {
+    // No bet to call: prefer value bet with strong hands, check medium/weak, semi-bluff draws
+    if (strongMade) return { action: "Raise", why: `Value bet with ${made.cat}.`, tags: [street, made.cat, "NoBet"] };
+    if (hasDraw && aggression >= 1 && plannedRaise > 0) {
+      return { action: "Raise", why: "Semi-bluff your draw when checked to.", tags: [street, "Draw", "SemiBluff"] };
+    }
+    return { action: "Check", why: `Pot control with ${made.cat}${hasDraw ? " / take a free card" : ""}.`, tags: [street, made.cat, "CheckBack"] };
+  } else {
+    // Facing a bet: compare pot odds to draw equity if drawing
+    if (hasDraw && (street === "flop" || street === "turn")) {
+      const outs = countOuts(draws, made);
+      const eq = outsToEquity(outs, street);
+      const po = potOdds(pot, betToCall);
+      if (eq >= po) {
+        if (aggression >= 1 && plannedRaise > 0) {
+          return { action: "Raise", why: `Semi-bluff: outs≈${outs}, equity≈${(eq*100).toFixed(1)}% ≥ pot odds≈${(po*100).toFixed(1)}%.`, tags: [street, "Draw", "SemiBluff"] };
+        }
+        return { action: "Call", why: `Pot odds: equity≈${(eq*100).toFixed(1)}% ≥ ${(po*100).toFixed(1)}%.`, tags: [street, "Draw", "Call"] };
+      } else {
+        return { action: "Fold", why: `Insufficient odds: equity≈${(eq*100).toFixed(1)}% < ${(po*100).toFixed(1)}%.`, tags: [street, "Draw", "Fold"] };
+      }
+    }
+    // With made hands: raise strong, call medium, fold weak
+    if (strongMade) {
+      return { action: "Raise", why: `Punish bets with ${made.cat}.`, tags: [street, made.cat, "ValueRaise"] };
+    }
+    if (mediumMade) {
+      // Tighten with more players
+      if (players >= 5 && aggression === 0) {
+        return { action: "Fold", why: `Multiway + ${made.cat} is vulnerable.`, tags: [street, made.cat, "TightFold"] };
+      }
+      return { action: "Call", why: `Control pot with ${made.cat}.`, tags: [street, made.cat, "PotControl"] };
+    }
+    return { action: "Fold", why: `High card vs bet: fold.`, tags: [street, made.cat, "Fold"] };
+  }
+}
+
+/* ===== Wiring ===== */
+const el = id => document.getElementById(id);
+
+function gatherState() {
+  const hole = [parseCard(el("hole1").value), parseCard(el("hole2").value)];
+  const board = [
+    parseCard(el("flop1").value),
+    parseCard(el("flop2").value),
+    parseCard(el("flop3").value),
+    parseCard(el("turn").value),
+    parseCard(el("river").value)
+  ];
+  return {
+    players: Number(el("players").value || 0),
+    position: el("position").value,
+    street: el("street").value,
+    hole,
+    board,
+    pot: Number(el("pot").value || 0),
+    betToCall: Number(el("betToCall").value || 0),
+    plannedRaise: Number(el("plannedRaise").value || 0),
+    aggression: Number(el("aggression").value || 1)
+  };
+}
+
+el("recommendBtn").addEventListener("click", () => {
+  const state = gatherState();
+  const rec = recommendAction(state);
+  const res = el("result");
+  res.style.display = "block";
+  res.innerHTML = `
+    <div class="badge">Players: ${state.players}</div>
+    <div class="badge">Pos: ${state.position}</div>
+    <div class="badge">Street: ${state.street}</div>
+    <h2>Recommendation: ${rec.action}</h2>
+    <p>${rec.why}</p>
+    <p class="hint">Tags: ${rec.tags.join(" • ")}</p>
+    ${state.plannedRaise > 0 && rec.action === "Raise" ? `<p class="hint">Raise size: ${state.plannedRaise}</p>` : ""}
+    <p class="hint">Note: This is a simplified helper. Adjust ranges and thresholds for your table.</p>
+  `;
+});
+</script>
+</body>
+</html>
