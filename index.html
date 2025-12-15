@@ -26,6 +26,41 @@
   font-size: 0.95rem; /* base size */
 }
 
+  /* Modal base */
+.modal {
+  display: none; /* hidden by default */
+  position: fixed;
+  z-index: 1000;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.6);
+}
+
+/* Modal content box */
+.modal-content {
+  background-color: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 600px;
+  font-size: 0.95rem;
+}
+
+/* Close button */
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+.close:hover {
+  color: #000;
+}
+
+
 .card-cheatsheet strong {
   display: block;
   margin-bottom: 4px;
@@ -56,6 +91,35 @@
 </style>
 </head>
 <body>
+  <!-- Help Button -->
+<button class="btn" type="button" id="helpBtn">Poker Help</button>
+
+<!-- Modal Structure -->
+<div id="helpModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Poker Helper Guide</h2>
+    <p><strong>Street:</strong> The stage of the hand (Preflop, Flop, Turn, River).</p>
+    <p><strong>Bet to Call:</strong> The amount you must match to stay in the hand.</p>
+    <p><strong>Planned Raise Size:</strong> The amount you want to raise to if you’re ahead.</p>
+    <p><strong>Positions:</strong> 
+      <ul>
+        <li><b>UTG/UTG+1</b>: First to act, play tight.</li>
+        <li><b>MP</b>: Middle seats, play a bit wider.</li>
+        <li><b>CO/Button</b>: Late positions, best spots, play more hands.</li>
+        <li><b>Small Blind/Big Blind</b>: Forced bets, tough spots, play carefully.</li>
+      </ul>
+    </p>
+    <p><strong>Board Cards:</strong> 
+      <ul>
+        <li><b>Flop</b>: First 3 community cards.</li>
+        <li><b>Turn</b>: Fourth card.</li>
+        <li><b>River</b>: Fifth and final card.</li>
+      </ul>
+    </p>
+  </div>
+</div>
+
   <h1>RDR2 Poker Helper (Texas Hold’em)</h1>
   <p class="hint">Enter the table state. The helper uses preflop ranges, made-hand checks, draw detection, and pot odds to suggest Fold / Call / Raise.</p>
   
@@ -194,6 +258,17 @@
   <div class="result" id="result" style="margin-top:16px; display:none"></div>
 
 <script>
+// Modal logic
+const helpModal = document.getElementById("helpModal");
+const helpBtn = document.getElementById("helpBtn");
+const closeBtn = document.querySelector(".close");
+
+helpBtn.onclick = () => { helpModal.style.display = "block"; };
+closeBtn.onclick = () => { helpModal.style.display = "none"; };
+window.onclick = (event) => {
+  if (event.target === helpModal) helpModal.style.display = "none";
+};
+
 /* ===== Card parsing helpers ===== */
 const rankOrder = "23456789TJQKA".split("");
 const suits = ["s","h","d","c"];
