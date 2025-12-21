@@ -263,6 +263,8 @@
     </fieldset>
 
     <button class="btn" type="button" id="recommendBtn">Get recommendation</button>
+    <button class="btn" type="button" id="resetAllBtn">Reset All</button>
+    <button class="btn" type="button" id="resetKeepCardsBtn">Reset Except Cards</button>
   </form>
 
   <div class="result" id="result" style="margin-top:16px; display:none"></div>
@@ -550,6 +552,46 @@ el("recommendBtn").addEventListener("click", () => {
     ${state.plannedRaise > 0 && rec.action === "Raise" ? `<p class="hint">Raise size: ${state.plannedRaise}</p>` : ""}
     <p class="hint">Note: This is a simplified helper. Adjust ranges and thresholds for your table.</p>
   `;
+});
+
+  // FULL RESET — clears everything
+document.getElementById("resetAllBtn").addEventListener("click", () => {
+  document.getElementById("players").value = "";
+  document.getElementById("street").value = "preflop";
+  document.getElementById("pot").value = "";
+  document.getElementById("betToCall").value = "";
+  document.getElementById("plannedRaise").value = "";
+
+  // Hole cards
+  document.getElementById("hole1").value = "";
+  document.getElementById("hole2").value = "";
+
+  // Board cards
+  document.getElementById("flop1").value = "";
+  document.getElementById("flop2").value = "";
+  document.getElementById("flop3").value = "";
+  document.getElementById("turn").value = "";
+  document.getElementById("river").value = "";
+
+  // Clear result box
+  document.getElementById("result").style.display = "none";
+  document.getElementById("result").innerHTML = "";
+});
+
+
+// PARTIAL RESET — keeps hole cards + board cards
+document.getElementById("resetKeepCardsBtn").addEventListener("click", () => {
+  document.getElementById("players").value = "";
+  document.getElementById("street").value = "preflop";
+  document.getElementById("pot").value = "";
+  document.getElementById("betToCall").value = "";
+  document.getElementById("plannedRaise").value = "";
+
+  // DO NOT clear hole cards or board cards
+
+  // Clear result box
+  document.getElementById("result").style.display = "none";
+  document.getElementById("result").innerHTML = "";
 });
 </script>
 </body>
