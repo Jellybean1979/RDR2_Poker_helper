@@ -1,4 +1,4 @@
-<!-- RDR2 Poker Helper - Version 1.7.6 -->
+<!-- RDR2 Poker Helper - Version 1.8.6 -->
 <!DOCTYPE html>
 <!DOCTYPE html>
 <html lang="en">
@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>RDR2 Poker Helper (Texas Hold’em) </title>
-<div class="badge" style="margin-bottom:12px;">v1.7.6</div>
+<div class="badge" style="margin-bottom:12px;">v1.8.6</div>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #222; }
     h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
@@ -527,31 +527,66 @@ function recommendAction(state) {
   const allCards = [...hole, ...board.filter(Boolean)];
 
   /* === PREFLOP === */
-  if (street === "preflop") {
-    const tag = comboTag(hole[0], hole[1]);
-    const range = openRanges[position];
-    const inRange = range.has(tag);
-    const facingBet = betToCall > 0;
+if (street === "preflop") {
+  const tag = comboTag(hole[0], hole[1]);
+  const range = openRanges[position];
+  const inRange = range.has(tag);
+  const facingBet = betToCall > 0;
 
-    if (!facingBet) {
-      if (inRange) {
-        return { action: "Raise", why: `Open-raise ${tag} from ${position}.`, tags: ["Preflop", tag, position] };
-      }
-      return { action: "Fold", why: `${tag} is too weak to open from ${position}.`, tags: ["Preflop", tag, position] };
+  // Suited connectors auto-open in LP (must run BEFORE inRange logic)
+  if (!facingBet && position === "LP") {
+    const suitedConnector = ["54","65","76","87","98","T9","JTs"].some(
+      sc => tag.startsWith(sc) && tag.endsWith("s")
+    );
+    if (suitedConnector) {
+      return {
+        action: "Raise",
+        why: `Playable suited connector ${tag} in late position.`,
+        tags: ["Preflop", tag, "SC"]
+      };
     }
-
-    // Facing a raise preflop
-    const premium = ["AA", "KK", "QQ", "JJ", "AKs", "AQs", "AKo"];
-    if (premium.includes(tag)) {
-      return { action: "Raise", why: `3-bet premium ${tag} vs raise.`, tags: ["Preflop", tag, "VsRaise"] };
-    }
-
-    if (inRange && players <= 4 && aggression >= 1) {
-      return { action: "Call", why: `Defend ${tag} vs raise in small field.`, tags: ["Preflop", tag, "Defend"] };
-    }
-
-    return { action: "Fold", why: `Fold ${tag} vs raise from ${position}.`, tags: ["Preflop", tag, "Tight"] };
   }
+
+  // No raise yet → open-raise or fold
+  if (!facingBet) {
+    if (inRange) {
+      return {
+        action: "Raise",
+        why: `Open-raise ${tag} from ${position}.`,
+        tags: ["Preflop", tag, position]
+      };
+    }
+    return {
+      action: "Fold",
+      why: `${tag} too weak to open from ${position}.`,
+      tags: ["Preflop", tag, position]
+    };
+  }
+
+  // Facing a raise preflop
+  const premium = ["AA","KK","QQ","JJ","AKs","AQs","AKo"];
+  if (premium.includes(tag)) {
+    return {
+      action: "Raise",
+      why: `3-bet premium ${tag} vs raise.`,
+      tags: ["Preflop", tag, "VsRaise"]
+    };
+  }
+
+  if (inRange && players <= 4 && aggression >= 1) {
+    return {
+      action: "Call",
+      why: `Defend ${tag} vs raise in small field.`,
+      tags: ["Preflop", tag, "Defend"]
+    };
+  }
+
+  return {
+    action: "Fold",
+    why: `Fold ${tag} vs raise from ${position}.`,
+    tags: ["Preflop", tag, "Tight"]
+  };
+}
 
   /* === POSTFLOP === */
   if (allCards.length < 5 && street !== "river") {
