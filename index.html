@@ -301,10 +301,6 @@
   <div class="result" id="result" style="margin-top:16px; display:none"></div>
 
 <script>
-// Modal logic
-const helpModal = document.getElementById("helpModal");
-const helpBtn = document.getElementById("helpBtn");
-const closeBtn = document.querySelector(".close");
 
 // Modal elements
 const adviceModal = document.getElementById("adviceModal");
@@ -320,6 +316,12 @@ openAdvice.addEventListener("click", () => {
 closeAdvice.addEventListener("click", () => {
   adviceModal.style.display = "none";
 });
+
+// Modal logic
+const helpModal = document.getElementById("helpModal");
+const helpBtn = document.getElementById("helpBtn");
+const closeBtn = document.querySelector(".close");
+
 
 // Close when clicking outside the box
 window.addEventListener("click", (e) => {
