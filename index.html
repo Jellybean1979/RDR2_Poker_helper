@@ -1,4 +1,4 @@
-<!-- RDR2 Poker Helper - Version 1.5.5 -->
+<!-- RDR2 Poker Helper - Version 1.5.6 -->
 <!DOCTYPE html>
 <!DOCTYPE html>
 <html lang="en">
@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>RDR2 Poker Helper (Texas Hold’em) </title>
-<div class="badge" style="margin-bottom:12px;">v1.5.5</div>
+<div class="badge" style="margin-bottom:12px;">v1.5.6</div>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #222; }
     h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
@@ -167,12 +167,22 @@
       <p><strong>AI Weakness #2 — They Overpay When They Hit</strong><br>
       When you hit a strong hand, value bet big. NPCs call with top pair, draws, two pair, and weak holdings.</p>
 
-      <p><strong>Best Strategy Loop</strong><br>
-      • Play tight preflop<br>
-      • Raise every hand you play<br>
-      • C‑bet every flop<br>
-      • Bet big when strong<br>
-      • Don’t bluff the river</p>
+     <p><strong>RDR2 Exploit Strategy Loop</strong><br>
+<b>Preflop:</b><br>
+• If nobody has raised yet → <b>YOU raise</b> (AI folds too often).<br>
+• If someone already raised → <b>tighten up</b> and only continue with strong hands.<br><br>
+
+<b>Flop:</b><br>
+• If they check to you → <b>make a continuation bet</b> (they fold too much).<br>
+• If they bet into you → <b>call the flop</b> (AI rarely bluffs the flop and overpays later).<br><br>
+
+<b>Turn:</b><br>
+• If you improve → <b>bet big</b> (they call with weak pairs and draws).<br>
+• If you miss and face pressure → <b>fold</b> (AI bets strong hands on turn).<br><br>
+
+<b>River:</b><br>
+• <b>Do not bluff</b> (AI calls too often).<br>
+• If you have a strong hand → <b>value bet big</b> (they overpay with worse hands).</p>
 
       <p><strong>NPC Behavior Patterns</strong><br>
       Tight = folds to pressure<br>
