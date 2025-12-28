@@ -416,98 +416,193 @@
       return hi + lo + suited;
     }
 
-    // ===== Postflop evaluation (basic) =====
-    function evaluateMadeHand(cards) {
-      const bySuit = { s:0, h:0, d:0, c:0 };
-      const counts = {};
-      const values = cards.map(c => rankValue(c.r)).sort((a,b)=>a-b);
-      cards.forEach(c => { bySuit[c.s]++; counts[c.r] = (counts[c.r]||0)+1; });
+ /* ===== Hand Evaluation Helpers ===== */
 
-      const maxSuit = Math.max(bySuit.s, bySuit.h, bySuit.d, bySuit.c);
-      const isFlush = maxSuit >= 5;
+// Robust straight detection (handles 7 cards, duplicates, wheel)
+function hasStraight(values) {
+  const uniq = [...new Set(values)].sort((a, b) => a - b);
 
-      const uniqVals = [...new Set(values)];
-      let straight = false;
-      if (uniqVals.length >= 5) {
-        for (let i=0;i<=uniqVals.length-5;i++){
-          if (uniqVals[i]+1===uniqVals[i+1] && uniqVals[i]+2===uniqVals[i+2] &&
-              uniqVals[i]+3===uniqVals[i+3] && uniqVals[i]+4===uniqVals[i+4]) {
-            straight = true; break;
-          }
-        }
-        const hasA = uniqVals.includes(12);
-        const hasWheel = hasA && uniqVals.includes(0) && uniqVals.includes(1) &&
-                         uniqVals.includes(2) && uniqVals.includes(3);
-        if (hasWheel) straight = true;
+  // Wheel: treat Ace (12) as -1
+  if (uniq.includes(12)) uniq.unshift(-1);
+
+  let run = 1;
+  for (let i = 1; i < uniq.length; i++) {
+    if (uniq[i] === uniq[i - 1] + 1) {
+      run++;
+      if (run >= 5) return true;
+    } else {
+      run = 1;
+    }
+  }
+  return false;
+}
+
+function evaluateMadeHand(cards) {
+  const bySuit = { s: 0, h: 0, d: 0, c: 0 };
+  const counts = {};
+  const values = cards.map(c => rankValue(c.r)).sort((a, b) => a - b);
+
+  cards.forEach(c => {
+    bySuit[c.s]++;
+    counts[c.r] = (counts[c.r] || 0) + 1;
+  });
+
+  const isFlush = Object.values(bySuit).some(v => v >= 5);
+  const straight = hasStraight(values);
+
+  const freq = Object.values(counts).sort((a, b) => b - a);
+  const hasFour = freq.includes(4);
+  const hasTrips = freq.includes(3);
+  const pairCount = freq.filter(x => x === 2).length;
+
+  if (isFlush && straight) return { cat: "Straight flush", strength: 7 };
+  if (hasFour) return { cat: "Four of a kind", strength: 6 };
+  if (hasTrips && pairCount >= 1) return { cat: "Full house", strength: 5 };
+  if (isFlush) return { cat: "Flush", strength: 4 };
+  if (straight) return { cat: "Straight", strength: 3 };
+  if (hasTrips) return { cat: "Three of a kind", strength: 2 };
+  if (pairCount >= 2) return { cat: "Two pair", strength: 1.5 };
+  if (pairCount >= 1) return { cat: "One pair", strength: 1 };
+  return { cat: "High card", strength: 0 };
+}
+
+function detectDraws(cards) {
+  const bySuit = { s: 0, h: 0, d: 0, c: 0 };
+  cards.forEach(c => bySuit[c.s]++);
+
+  const flushDraw = Object.values(bySuit).some(v => v === 4);
+
+  const values = cards.map(c => rankValue(c.r)).sort((a, b) => a - b);
+  const uniq = [...new Set(values)];
+
+  let oesd = false, gutshot = false;
+
+  for (let i = 0; i <= uniq.length - 4; i++) {
+    const a = uniq[i], b = uniq[i + 1], c = uniq[i + 2], d = uniq[i + 3];
+    if (a + 1 === b && b + 1 === c) {
+      if (c + 1 === d) oesd = true;
+      else if (c + 2 === d) gutshot = true;
+    }
+  }
+
+  // Wheel draws
+  if (uniq.includes(12)) {
+    const low = [0, 1, 2, 3].filter(v => uniq.includes(v)).length;
+    if (low === 4) oesd = true;
+    if (low === 3) gutshot = true;
+  }
+
+  return { flushDraw, oesd, gutshot };
+}
+
+function potOdds(pot, betToCall) {
+  if (betToCall <= 0) return 0;
+  return betToCall / (pot + betToCall);
+}
+
+function outsToEquity(outs, street) {
+  if (street === "flop") return Math.min(1, outs * 0.04);
+  if (street === "turn") return Math.min(1, outs * 0.02);
+  return 0;
+}
+
+function countOuts(draws) {
+  if (draws.flushDraw) return 9;
+  if (draws.oesd) return 8;
+  if (draws.gutshot) return 4;
+  return 0;
+}
+
+/* ===== Recommendation Engine ===== */
+
+function recommendAction(state) {
+  const { street, players, position, hole, board, pot, betToCall, plannedRaise, aggression } = state;
+
+  if (!hole[0] || !hole[1]) {
+    return { action: "Input needed", why: "Enter both hole cards.", tags: [] };
+  }
+
+  const allCards = [...hole, ...board.filter(Boolean)];
+
+  /* === PREFLOP === */
+  if (street === "preflop") {
+    const tag = comboTag(hole[0], hole[1]);
+    const range = openRanges[position];
+    const inRange = range.has(tag);
+    const facingBet = betToCall > 0;
+
+    if (!facingBet) {
+      if (inRange) {
+        return { action: "Raise", why: `Open-raise ${tag} from ${position}.`, tags: ["Preflop", tag] };
       }
-
-      const freq = Object.values(counts).sort((a,b)=>b-a);
-      const hasTrips = freq.includes(3);
-      const pairs = freq.filter(x=>x===2).length;
-      const hasFour = freq.includes(4);
-
-      if (isFlush && straight) return { cat: "Straight flush", strength: 7 };
-      if (hasFour) return { cat: "Four of a kind", strength: 6 };
-      if (hasTrips && pairs>=1) return { cat: "Full house", strength: 5 };
-      if (isFlush) return { cat: "Flush", strength: 4 };
-      if (straight) return { cat: "Straight", strength: 3 };
-      if (hasTrips) return { cat: "Three of a kind", strength: 2 };
-      if (pairs>=2) return { cat: "Two pair", strength: 1.5 };
-      if (pairs>=1) return { cat: "One pair", strength: 1 };
-      return { cat: "High card", strength: 0 };
+      return { action: "Fold", why: `${tag} too weak to open from ${position}.`, tags: ["Preflop", tag] };
     }
 
-    function detectDraws(cards) {
-      const bySuit = { s:0, h:0, d:0, c:0 };
-      cards.forEach(c => bySuit[c.s]++);
-      const flushDraw = Object.values(bySuit).some(cnt => cnt === 4);
+    const premium = ["AA", "KK", "QQ", "JJ", "AKs", "AQs", "AKo"];
+    if (premium.includes(tag)) {
+      return { action: "Raise", why: `3-bet premium ${tag} vs raise.`, tags: ["Preflop", tag, "VsRaise"] };
+    }
 
-      const values = cards.map(c => rankValue(c.r)).sort((a,b)=>a-b);
-      const uniqVals = [...new Set(values)];
-      let oesd = false, gutshot = false;
+    if (inRange && players <= 4 && aggression >= 1) {
+      return { action: "Call", why: `Defend ${tag} vs raise in small field.`, tags: ["Preflop", tag, "Defend"] };
+    }
 
-      for (let i=0;i<=uniqVals.length-4;i++){
-        const a=uniqVals[i], b=uniqVals[i+1], c=uniqVals[i+2], d=uniqVals[i+3];
-        if (a+1===b && b+1===c) {
-          if (c+1===d) {
-            oesd = true;
-          } else if (c+2===d) {
-            gutshot = true;
-          }
-        }
+    return { action: "Fold", why: `Fold ${tag} vs raise from ${position}.`, tags: ["Preflop", tag] };
+  }
+
+  /* === POSTFLOP === */
+  if (allCards.length < 5 && street !== "river") {
+    return { action: "Input needed", why: "Add flop/turn cards.", tags: [] };
+  }
+
+  const made = evaluateMadeHand(allCards);
+  const draws = detectDraws(allCards);
+  const facingBet = betToCall > 0;
+
+  const strongMade = made.strength >= 2;     // trips+
+  const mediumMade = made.strength >= 1;     // one pair / two pair
+  const hasDraw = draws.flushDraw || draws.oesd || draws.gutshot;
+
+  /* === NO BET TO CALL === */
+  if (!facingBet) {
+    if (strongMade) {
+      return { action: "Raise", why: `Value bet with ${made.cat}.`, tags: [street, made.cat] };
+    }
+    if (hasDraw && aggression >= 1 && plannedRaise > 0) {
+      return { action: "Raise", why: "Semi-bluff your draw when checked to.", tags: [street, "Draw"] };
+    }
+    return { action: "Check", why: `Check with ${made.cat}${hasDraw ? " / take a free card" : ""}.`, tags: [street, made.cat] };
+  }
+
+  /* === FACING A BET === */
+  if (hasDraw && (street === "flop" || street === "turn")) {
+    const outs = countOuts(draws);
+    const eq = outsToEquity(outs, street);
+    const po = potOdds(pot, betToCall);
+
+    if (eq >= po) {
+      if (aggression >= 1 && plannedRaise > 0) {
+        return { action: "Raise", why: `Semi-bluff: equity ${(eq*100).toFixed(1)}% ≥ pot odds ${(po*100).toFixed(1)}%.`, tags: [street, "Draw"] };
       }
-      const hasA = uniqVals.includes(12);
-      if (hasA) {
-        const low = [0,1,2,3].filter(v => uniqVals.includes(v)).length;
-        if (low === 3) gutshot = true;
-        if (low === 4) oesd = true;
-      }
-      return { flushDraw, oesd, gutshot };
+      return { action: "Call", why: `Call: equity ${(eq*100).toFixed(1)}% ≥ ${(po*100).toFixed(1)}%.`, tags: [street, "Draw"] };
     }
 
-    // ===== Pot odds and outs =====
-    function potOdds(pot, betToCall) {
-      if (betToCall <= 0) return 0;
-      return betToCall / (pot + betToCall);
-    }
+    return { action: "Fold", why: `Fold: equity ${(eq*100).toFixed(1)}% < ${(po*100).toFixed(1)}%.`, tags: [street, "Draw"] };
+  }
 
-    function outsToEquity(outs, street) {
-      if (street === "flop") return Math.min(1, (outs * 0.04));
-      if (street === "turn") return Math.min(1, (outs * 0.02));
-      return 0;
-    }
+  if (strongMade) {
+    return { action: "Raise", why: `Punish bets with ${made.cat}.`, tags: [street, made.cat] };
+  }
 
-    function countOuts(draws, made) {
-      let outs = 0;
-      if (draws.flushDraw) outs = Math.max(outs, 9);
-      if (draws.oesd) outs = Math.max(outs, 8);
-      if (draws.gutshot) outs = Math.max(outs, 4);
-      return outs;
+  if (mediumMade) {
+    if (players >= 5 && aggression === 0) {
+      return { action: "Fold", why: `${made.cat} too vulnerable multiway.`, tags: [street, made.cat] };
     }
+    return { action: "Call", why: `Call with ${made.cat}.`, tags: [street, made.cat] };
+  }
 
-    // ===== Action logic =====
-    function recommendAction(state) {
-      const { street, players, position, hole, board, pot, betToCall, plannedRaise, aggression } = state;
+  return { action: "Fold", why: `High card vs bet: fold.`, tags: [street, made.cat] };
+}
 
       if (!hole[0] || !hole[1]) return { action: "Input needed", why: "Enter both hole cards.", tags: [] };
 
