@@ -1,4 +1,4 @@
-<!-- RDR2 Poker Helper - Version 1.6.6 -->
+<!-- RDR2 Poker Helper - Version 1.7.6 -->
 <!DOCTYPE html>
 <!DOCTYPE html>
 <html lang="en">
@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>RDR2 Poker Helper (Texas Hold’em) </title>
-<div class="badge" style="margin-bottom:12px;">v1.6.6</div>
+<div class="badge" style="margin-bottom:12px;">v1.7.6</div>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #222; }
     h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
@@ -422,7 +422,7 @@
 function hasStraight(values) {
   const uniq = [...new Set(values)].sort((a, b) => a - b);
 
-  // Wheel: treat Ace (12) as -1
+  // Wheel: treat Ace (12) as -1 for A-2-3-4-5
   if (uniq.includes(12)) uniq.unshift(-1);
 
   let run = 1;
@@ -485,7 +485,7 @@ function detectDraws(cards) {
     }
   }
 
-  // Wheel draws
+  // Wheel draws (A-2-3-4-5)
   if (uniq.includes(12)) {
     const low = [0, 1, 2, 3].filter(v => uniq.includes(v)).length;
     if (low === 4) oesd = true;
@@ -495,6 +495,7 @@ function detectDraws(cards) {
   return { flushDraw, oesd, gutshot };
 }
 
+/* ===== Pot odds and outs ===== */
 function potOdds(pot, betToCall) {
   if (betToCall <= 0) return 0;
   return betToCall / (pot + betToCall);
@@ -513,15 +514,16 @@ function countOuts(draws) {
   return 0;
 }
 
-/* ===== Recommendation Engine ===== */
-
+/* ===== Recommendation engine ===== */
 function recommendAction(state) {
   const { street, players, position, hole, board, pot, betToCall, plannedRaise, aggression } = state;
 
+  // Validate hole cards
   if (!hole[0] || !hole[1]) {
     return { action: "Input needed", why: "Enter both hole cards.", tags: [] };
   }
 
+  // Build all cards for postflop
   const allCards = [...hole, ...board.filter(Boolean)];
 
   /* === PREFLOP === */
@@ -533,11 +535,12 @@ function recommendAction(state) {
 
     if (!facingBet) {
       if (inRange) {
-        return { action: "Raise", why: `Open-raise ${tag} from ${position}.`, tags: ["Preflop", tag] };
+        return { action: "Raise", why: `Open-raise ${tag} from ${position}.`, tags: ["Preflop", tag, position] };
       }
-      return { action: "Fold", why: `${tag} too weak to open from ${position}.`, tags: ["Preflop", tag] };
+      return { action: "Fold", why: `${tag} is too weak to open from ${position}.`, tags: ["Preflop", tag, position] };
     }
 
+    // Facing a raise preflop
     const premium = ["AA", "KK", "QQ", "JJ", "AKs", "AQs", "AKo"];
     if (premium.includes(tag)) {
       return { action: "Raise", why: `3-bet premium ${tag} vs raise.`, tags: ["Preflop", tag, "VsRaise"] };
@@ -547,31 +550,35 @@ function recommendAction(state) {
       return { action: "Call", why: `Defend ${tag} vs raise in small field.`, tags: ["Preflop", tag, "Defend"] };
     }
 
-    return { action: "Fold", why: `Fold ${tag} vs raise from ${position}.`, tags: ["Preflop", tag] };
+    return { action: "Fold", why: `Fold ${tag} vs raise from ${position}.`, tags: ["Preflop", tag, "Tight"] };
   }
 
   /* === POSTFLOP === */
   if (allCards.length < 5 && street !== "river") {
-    return { action: "Input needed", why: "Add flop/turn cards.", tags: [] };
+    return { action: "Input needed", why: "Add board cards for flop/turn.", tags: ["Postflop"] };
   }
 
   const made = evaluateMadeHand(allCards);
   const draws = detectDraws(allCards);
   const facingBet = betToCall > 0;
 
-  const strongMade = made.strength >= 2;     // trips+
-  const mediumMade = made.strength >= 1;     // one pair / two pair
+  const strongMade = made.strength >= 2;      // trips+
+  const mediumMade = made.strength >= 1 && made.strength < 2; // one pair / two pair
   const hasDraw = draws.flushDraw || draws.oesd || draws.gutshot;
 
   /* === NO BET TO CALL === */
   if (!facingBet) {
     if (strongMade) {
-      return { action: "Raise", why: `Value bet with ${made.cat}.`, tags: [street, made.cat] };
+      return { action: "Raise", why: `Value bet with ${made.cat}.`, tags: [street, made.cat, "NoBet"] };
     }
     if (hasDraw && aggression >= 1 && plannedRaise > 0) {
-      return { action: "Raise", why: "Semi-bluff your draw when checked to.", tags: [street, "Draw"] };
+      return { action: "Raise", why: "Semi-bluff your draw when checked to.", tags: [street, "Draw", "SemiBluff"] };
     }
-    return { action: "Check", why: `Check with ${made.cat}${hasDraw ? " / take a free card" : ""}.`, tags: [street, made.cat] };
+    return {
+      action: "Check",
+      why: `Pot control with ${made.cat}${hasDraw ? " / take a free card" : ""}.`,
+      tags: [street, made.cat, "CheckBack"]
+    };
   }
 
   /* === FACING A BET === */
@@ -582,183 +589,119 @@ function recommendAction(state) {
 
     if (eq >= po) {
       if (aggression >= 1 && plannedRaise > 0) {
-        return { action: "Raise", why: `Semi-bluff: equity ${(eq*100).toFixed(1)}% ≥ pot odds ${(po*100).toFixed(1)}%.`, tags: [street, "Draw"] };
+        return {
+          action: "Raise",
+          why: `Semi-bluff: equity≈${(eq * 100).toFixed(1)}% ≥ pot odds≈${(po * 100).toFixed(1)}%.`,
+          tags: [street, "Draw", "SemiBluff"]
+        };
       }
-      return { action: "Call", why: `Call: equity ${(eq*100).toFixed(1)}% ≥ ${(po*100).toFixed(1)}%.`, tags: [street, "Draw"] };
+      return {
+        action: "Call",
+        why: `Pot odds: equity≈${(eq * 100).toFixed(1)}% ≥ ${(po * 100).toFixed(1)}%.`,
+        tags: [street, "Draw", "Call"]
+      };
     }
 
-    return { action: "Fold", why: `Fold: equity ${(eq*100).toFixed(1)}% < ${(po*100).toFixed(1)}%.`, tags: [street, "Draw"] };
+    return {
+      action: "Fold",
+      why: `Insufficient odds: equity≈${(eq * 100).toFixed(1)}% < ${(po * 100).toFixed(1)}%.`,
+      tags: [street, "Draw", "Fold"]
+    };
   }
 
+  // With made hands: raise strong, call medium, fold weak
   if (strongMade) {
-    return { action: "Raise", why: `Punish bets with ${made.cat}.`, tags: [street, made.cat] };
+    return { action: "Raise", why: `Punish bets with ${made.cat}.`, tags: [street, made.cat, "ValueRaise"] };
   }
 
   if (mediumMade) {
     if (players >= 5 && aggression === 0) {
-      return { action: "Fold", why: `${made.cat} too vulnerable multiway.`, tags: [street, made.cat] };
+      return { action: "Fold", why: `Multiway + ${made.cat} is vulnerable.`, tags: [street, made.cat, "TightFold"] };
     }
-    return { action: "Call", why: `Call with ${made.cat}.`, tags: [street, made.cat] };
+    return { action: "Call", why: `Control pot with ${made.cat}.`, tags: [street, made.cat, "PotControl"] };
   }
 
-  return { action: "Fold", why: `High card vs bet: fold.`, tags: [street, made.cat] };
+  return { action: "Fold", why: `High card vs bet: fold.`, tags: [street, made.cat, "Fold"] };
 }
 
-      if (!hole[0] || !hole[1]) return { action: "Input needed", why: "Enter both hole cards.", tags: [] };
+/* ===== Wiring ===== */
+const el = id => document.getElementById(id);
 
-      const allCards = [...hole, ...board.filter(Boolean)];
+function gatherState() {
+  const hole = [parseCard(el("hole1").value), parseCard(el("hole2").value)];
+  const board = [
+    parseCard(el("flop1").value),
+    parseCard(el("flop2").value),
+    parseCard(el("flop3").value),
+    parseCard(el("turn").value),
+    parseCard(el("river").value)
+  ];
+  return {
+    players: Number(el("players").value || 0),
+    position: el("position").value,
+    street: el("street").value,
+    hole,
+    board,
+    pot: Number(el("pot").value || 0),
+    betToCall: Number(el("betToCall").value || 0),
+    plannedRaise: Number(el("plannedRaise").value || 0),
+    aggression: Number(el("aggression").value || 1)
+  };
+}
 
-      if (street === "preflop") {
-        const tag = comboTag(hole[0], hole[1]);
-        const range = openRanges[position];
-        const inRange = range.has(tag);
-        const facingBet = betToCall > 0;
-        if (!facingBet) {
-          if (inRange) return { action: "Raise", why: `Opening ${tag} from ${position}.`, tags: ["Preflop", tag, position] };
-          return { action: "Fold", why: `Too weak to open ${tag} from ${position}.`, tags: ["Preflop", tag, position] };
-        } else {
-          const premium = ["AA","KK","QQ","JJ","AKs","AQs","AKo"];
-          if (premium.includes(tag)) {
-            return { action: "Raise", why: `3-bet premium ${tag} vs raise.`, tags: ["Preflop", tag, "VsRaise"] };
-          }
-          if (inRange && players <= 4 && aggression >= 1) {
-            return { action: "Call", why: `Defend ${tag} vs raise in small field.`, tags: ["Preflop", tag, "Defend"] };
-          }
-          return { action: "Fold", why: `Fold ${tag} vs raise from ${position}.`, tags: ["Preflop", tag, "Tight"] };
-        }
-      }
+el("recommendBtn").addEventListener("click", () => {
+  const state = gatherState();
+  const rec = recommendAction(state);
+  const res = el("result");
+  res.style.display = "block";
+  res.innerHTML = `
+    <div class="badge">Players: ${state.players}</div>
+    <div class="badge">Pos: ${state.position}</div>
+    <div class="badge">Street: ${state.street}</div>
+    <h2>Recommendation: ${rec.action}</h2>
+    <p>${rec.why}</p>
+    <p class="hint">Tags: ${rec.tags.join(" • ")}</p>
+    ${state.plannedRaise > 0 && rec.action === "Raise" ? `<p class="hint">Raise size: ${state.plannedRaise}</p>` : ""}
+    <p class="hint">Note: This is a simplified helper. Adjust ranges and thresholds for your table.</p>
+  `;
+});
 
-      if (allCards.length < 5 && street !== "river") {
-        return { action: "Input needed", why: "Add board cards for flop/turn.", tags: ["Postflop"] };
-      }
+// FULL RESET — clears everything
+document.getElementById("resetAllBtn").addEventListener("click", () => {
+  document.getElementById("players").value = "";
+  document.getElementById("street").value = "preflop";
+  document.getElementById("pot").value = "";
+  document.getElementById("betToCall").value = "";
+  document.getElementById("plannedRaise").value = "";
 
-      const made = evaluateMadeHand(allCards);
-      const draws = detectDraws(allCards);
-      const facingBet = betToCall > 0;
+  // Hole cards
+  document.getElementById("hole1").value = "";
+  document.getElementById("hole2").value = "";
 
-      const strongMade = made.strength >= 2;
-      const mediumMade = made.strength >= 1 && made.strength < 2;
-      const hasDraw = draws.flushDraw || draws.oesd || draws.gutshot;
+  // Board cards
+  document.getElementById("flop1").value = "";
+  document.getElementById("flop2").value = "";
+  document.getElementById("flop3").value = "";
+  document.getElementById("turn").value = "";
+  document.getElementById("river").value = "";
 
-      if (!facingBet) {
-        if (strongMade) return { action: "Raise", why: `Value bet with ${made.cat}.`, tags: [street, made.cat, "NoBet"] };
-        if (hasDraw && aggression >= 1 && plannedRaise > 0) {
-          return { action: "Raise", why: "Semi-bluff your draw when checked to.", tags: [street, "Draw", "SemiBluff"] };
-        }
-        return { action: "Check", why: `Pot control with ${made.cat}${hasDraw ? " / take a free card" : ""}.`, tags: [street, made.cat, "CheckBack"] };
-      } else {
-        if (hasDraw && (street === "flop" || street === "turn")) {
-          const outs = countOuts(draws, made);
-          const eq = outsToEquity(outs, street);
-          const po = potOdds(pot, betToCall);
-          if (eq >= po) {
-            if (aggression >= 1 && plannedRaise > 0) {
-              return {
-                action: "Raise",
-                why: `Semi-bluff: outs≈${outs}, equity≈${(eq*100).toFixed(1)}% ≥ pot odds≈${(po*100).toFixed(1)}%.`,
-                tags: [street, "Draw", "SemiBluff"]
-              };
-            }
-            return {
-              action: "Call",
-              why: `Pot odds: equity≈${(eq*100).toFixed(1)}% ≥ ${(po*100).toFixed(1)}%.`,
-              tags: [street, "Draw", "Call"]
-            };
-          } else {
-            return {
-              action: "Fold",
-              why: `Insufficient odds: equity≈${(eq*100).toFixed(1)}% < ${(po*100).toFixed(1)}%.`,
-              tags: [street, "Draw", "Fold"]
-            };
-          }
-        }
-        if (strongMade) {
-          return { action: "Raise", why: `Punish bets with ${made.cat}.`, tags: [street, made.cat, "ValueRaise"] };
-        }
-        if (mediumMade) {
-          if (players >= 5 && aggression === 0) {
-            return { action: "Fold", why: `Multiway + ${made.cat} is vulnerable.`, tags: [street, made.cat, "TightFold"] };
-          }
-          return { action: "Call", why: `Control pot with ${made.cat}.`, tags: [street, made.cat, "PotControl"] };
-        }
-        return { action: "Fold", why: `High card vs bet: fold.`, tags: [street, made.cat, "Fold"] };
-      }
-    }
+  // Clear result box
+  document.getElementById("result").style.display = "none";
+  document.getElementById("result").innerHTML = "";
+});
 
-    // ===== Wiring =====
-    const el = id => document.getElementById(id);
+// PARTIAL RESET — keeps hole cards + board cards
+document.getElementById("resetKeepCardsBtn").addEventListener("click", () => {
+  document.getElementById("players").value = "";
+  document.getElementById("street").value = "preflop";
+  document.getElementById("pot").value = "";
+  document.getElementById("betToCall").value = "";
+  document.getElementById("plannedRaise").value = "";
 
-    function gatherState() {
-      const hole = [parseCard(el("hole1").value), parseCard(el("hole2").value)];
-      const board = [
-        parseCard(el("flop1").value),
-        parseCard(el("flop2").value),
-        parseCard(el("flop3").value),
-        parseCard(el("turn").value),
-        parseCard(el("river").value)
-      ];
-      return {
-        players: Number(el("players").value || 0),
-        position: el("position").value,
-        street: el("street").value,
-        hole,
-        board,
-        pot: Number(el("pot").value || 0),
-        betToCall: Number(el("betToCall").value || 0),
-        plannedRaise: Number(el("plannedRaise").value || 0),
-        aggression: Number(el("aggression").value || 1)
-      };
-    }
-
-    el("recommendBtn").addEventListener("click", () => {
-      const state = gatherState();
-      const rec = recommendAction(state);
-      const res = el("result");
-      res.style.display = "block";
-      res.innerHTML = `
-        <div class="badge">Players: ${state.players}</div>
-        <div class="badge">Pos: ${state.position}</div>
-        <div class="badge">Street: ${state.street}</div>
-        <h2>Recommendation: ${rec.action}</h2>
-        <p>${rec.why}</p>
-        <p class="hint">Tags: ${rec.tags.join(" • ")}</p>
-        ${state.plannedRaise > 0 && rec.action === "Raise" ? `<p class="hint">Raise size: ${state.plannedRaise}</p>` : ""}
-        <p class="hint">Note: This is a simplified helper. Adjust ranges and thresholds for your table.</p>
-      `;
-    });
-
-    // FULL RESET — clears everything
-    document.getElementById("resetAllBtn").addEventListener("click", () => {
-      document.getElementById("players").value = "";
-      document.getElementById("street").value = "preflop";
-      document.getElementById("pot").value = "";
-      document.getElementById("betToCall").value = "";
-      document.getElementById("plannedRaise").value = "";
-
-      document.getElementById("hole1").value = "";
-      document.getElementById("hole2").value = "";
-
-      document.getElementById("flop1").value = "";
-      document.getElementById("flop2").value = "";
-      document.getElementById("flop3").value = "";
-      document.getElementById("turn").value = "";
-      document.getElementById("river").value = "";
-
-      document.getElementById("result").style.display = "none";
-      document.getElementById("result").innerHTML = "";
-    });
-
-    // PARTIAL RESET — keeps hole cards + board cards
-    document.getElementById("resetKeepCardsBtn").addEventListener("click", () => {
-      document.getElementById("players").value = "";
-      document.getElementById("street").value = "preflop";
-      document.getElementById("pot").value = "";
-      document.getElementById("betToCall").value = "";
-      document.getElementById("plannedRaise").value = "";
-
-      document.getElementById("result").style.display = "none";
-      document.getElementById("result").innerHTML = "";
-    });
-  </script>
+  // Clear result box
+  document.getElementById("result").style.display = "none";
+  document.getElementById("result").innerHTML = "";
+});
+</script>
 </body>
 </html>
