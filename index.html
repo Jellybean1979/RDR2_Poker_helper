@@ -322,19 +322,19 @@ const helpModal = document.getElementById("helpModal");
 const helpBtn = document.getElementById("helpBtn");
 const closeBtn = document.querySelector(".close");
 
-
-// Close when clicking outside the box
-window.addEventListener("click", (e) => {
-  if (e.target === adviceModal) {
+window.addEventListener("click", (event) => {
+  if (event.target === helpModal) {
+    helpModal.style.display = "none";
+  }
+  if (event.target === adviceModal) {
     adviceModal.style.display = "none";
   }
 });
 
+
 helpBtn.onclick = () => { helpModal.style.display = "block"; };
 closeBtn.onclick = () => { helpModal.style.display = "none"; };
-window.onclick = (event) => {
-  if (event.target === helpModal) helpModal.style.display = "none";
-};
+
 
 /* ===== Card parsing helpers ===== */
 const rankOrder = "23456789TJQKA".split("");
