@@ -1,745 +1,1454 @@
-<!-- RDR2 Poker Helper - Version 1.8.8 -->
-<!DOCTYPE html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RDR2 Poker Helper (Texas Hold’em) </title>
-<div class="badge" style="margin-bottom:12px;">v1.8.8</div>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color: #222; }
-    h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-    fieldset { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    legend { padding: 0 8px; font-weight: 600; }
-    label { display: block; margin: 8px 0 4px; font-weight: 600; }
-    input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
-    .row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .btn { margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 0; background: #0d6efd; color: #fff; cursor: pointer; }
-    .btn:disabled { background: #999; cursor: not-allowed; }
-    .result { padding: 12px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; margin-right: 6px; font-size: 0.85rem; }
-    .hint { color: #555; font-size: 0.9rem; }
-    code { background: #f0f0f0; padding: 1px 4px; border-radius: 4px; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RDR2 Poker Advisor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+/* =============================================
+   RDR2 POKER ADVISOR — Frontier Saloon Theme
+   ============================================= */
+:root {
+  --felt: #1a3a1a;
+  --felt-light: #234d23;
+  --felt-highlight: #2a5c2a;
+  --wood: #3d1f0a;
+  --wood-light: #5c300f;
+  --gold: #c9913d;
+  --gold-light: #e8b86d;
+  --gold-dim: #7a5520;
+  --cream: #f0e6c8;
+  --cream-dark: #d4c49a;
+  --cream-dim: #a89060;
+  --red-card: #8b1a1a;
+  --black-card: #1a1a2e;
+  --ink: #1a1209;
+  --ink-light: #2e2010;
+  --parchment: #f5ead0;
+  --parchment-dark: #e8d5a0;
+  --sepia: #6b4c1e;
+  --action-raise: #7a1f1f;
+  --action-call: #1f4a1f;
+  --action-fold: #1a1a1a;
+  --action-check: #1a2f4a;
+  --warn: #8b5e00;
+  --border-ornate: #7a5520;
+}
 
-    .card-cheatsheet {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin: 16px 0;
-      font-size: 0.95rem;
-    }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .card-cheatsheet strong {
-      display: block;
-      margin-bottom: 4px;
-    }
+body {
+  background: var(--wood);
+  font-family: 'Crimson Text', Georgia, serif;
+  min-height: 100vh;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 40px,
+      rgba(0,0,0,0.03) 40px,
+      rgba(0,0,0,0.03) 41px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 40px,
+      rgba(0,0,0,0.03) 40px,
+      rgba(0,0,0,0.03) 41px
+    ),
+    radial-gradient(ellipse at center, #4a2810 0%, #2a1205 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 12px 40px;
+}
 
-    .card-cheatsheet ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
+/* ── HEADER ── */
+header {
+  text-align: center;
+  margin-bottom: 24px;
+  position: relative;
+}
+.header-ornament {
+  color: var(--gold);
+  font-size: 1.1rem;
+  letter-spacing: 6px;
+  opacity: 0.7;
+  display: block;
+  margin-bottom: 4px;
+}
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  font-weight: 900;
+  color: var(--gold-light);
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.8),
+    0 0 30px rgba(201,145,61,0.3);
+  letter-spacing: 2px;
+  line-height: 1.1;
+}
+.subtitle {
+  font-family: 'Crimson Text', serif;
+  font-style: italic;
+  color: var(--cream-dim);
+  font-size: 1rem;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+.header-rule {
+  width: 280px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin: 10px auto 0;
+}
 
-    /* Modal overlay */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-    }
+/* ── MAIN LAYOUT ── */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  max-width: 960px;
+}
+@media (max-width: 720px) {
+  .main-layout { grid-template-columns: 1fr; }
+}
 
-    /* Modal content box */
-    .modal-content {
-      background: #fff;
-      margin: 10% auto;
-      padding: 20px;
-      width: 80%;
-      max-height: 60vh /* keeps the modal inside the screen */
-      overflow-y auto /* enables scrolling inside the modal */
-      max-width: 600px;
-      border-radius: 8px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.3);
-      font-size: 0.95rem;
-    }
+/* ── PANEL ── */
+.panel {
+  background: var(--parchment);
+  border: 2px solid var(--border-ornate);
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    inset 0 0 40px rgba(0,0,0,0.08);
+  position: relative;
+}
+.panel::before, .panel::after {
+  content: '✦';
+  position: absolute;
+  color: var(--gold-dim);
+  font-size: 0.7rem;
+}
+.panel::before { top: 6px; left: 10px; }
+.panel::after  { top: 6px; right: 10px; }
 
-    /* Close button for help modal */
-    .close {
-      color: #aaa;
-      float: right;
-      font-size: 1.5rem;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .close:hover {
-      color: #000;
-    }
+.panel-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--sepia);
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--cream-dark);
+  position: relative;
+}
+.panel-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 2px;
+  background: var(--gold);
+  margin: 6px auto 0;
+  opacity: 0.6;
+}
 
-    /* Close button for advice modal */
-    .close-btn {
-      float: right;
-      font-size: 1.5rem;
-      font-weight: bold;
-      cursor: pointer;
-      color: #aaa;
-    }
-    .close-btn:hover {
-      color: red;
-    }
+/* ── FORM ELEMENTS ── */
+.field-group {
+  margin-bottom: 14px;
+}
+label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--sepia);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 5px;
+}
+select, input[type="number"], input[type="text"] {
+  width: 100%;
+  background: var(--cream);
+  border: 1px solid var(--cream-dark);
+  border-bottom: 2px solid var(--border-ornate);
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+}
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b4c1e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+select:focus, input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(201,145,61,0.2);
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
 
-    /* Responsive scaling */
-    @media (max-width: 900px) {
-      .card-cheatsheet { font-size: 0.85rem; }
-    }
-    @media (max-width: 600px) {
-      .card-cheatsheet {
-        grid-template-columns: repeat(2, 1fr);
-        font-size: 0.8rem;
-      }
-    }
-    @media (max-width: 400px) {
-      .card-cheatsheet {
-        grid-template-columns: 1fr;
-        font-size: 0.75rem;
-      }
-    }
-  </style>
+/* ── CARD SELECTOR ── */
+.card-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.card-slot {
+  flex: 1;
+}
+.card-slot label {
+  text-align: center;
+}
+.card-display {
+  background: white;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  user-select: none;
+}
+.card-display:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.card-display.hearts, .card-display.diamonds { color: var(--red-card); border-color: #e88; }
+.card-display.spades, .card-display.clubs    { color: var(--black-card); border-color: #88a; }
+.card-display.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,145,61,0.35); }
+.card-display.empty { color: #aaa; font-size: 2rem; border-style: dashed; }
+
+/* Card picker modal */
+.picker-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.picker-overlay.open { display: flex; }
+.picker-box {
+  background: var(--parchment);
+  border: 2px solid var(--border-ornate);
+  border-radius: 6px;
+  padding: 20px;
+  max-width: 400px;
+  width: 94%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 60px rgba(0,0,0,0.8);
+}
+.picker-title {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--sepia);
+  text-align: center;
+  margin-bottom: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.picker-suits {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+.suit-btn {
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.suit-btn:hover { transform: scale(1.1); }
+.suit-btn.active { border-color: var(--gold); background: #fff8ee; }
+.picker-ranks {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.rank-btn {
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 4px;
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.1s, border-color 0.1s;
+}
+.rank-btn:hover { background: #fff0d0; border-color: var(--gold); }
+.rank-btn.used { opacity: 0.3; pointer-events: none; background: #eee; }
+.picker-cancel {
+  display: block;
+  margin: 14px auto 0;
+  background: transparent;
+  border: 1px solid var(--sepia);
+  border-radius: 3px;
+  padding: 6px 20px;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.9rem;
+  color: var(--sepia);
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.picker-cancel:hover { background: rgba(107,76,30,0.1); }
+
+/* ── COMMUNITY CARDS ── */
+.community-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.community-card {
+  background: white;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  width: 48px;
+  height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+}
+.community-card:hover { transform: translateY(-2px); }
+.community-card.hearts, .community-card.diamonds { color: var(--red-card); border-color: #e88; }
+.community-card.spades, .community-card.clubs    { color: var(--black-card); }
+.community-card.empty   { color: #bbb; font-size: 1.4rem; border-style: dashed; }
+.community-card.locked  { opacity: 0.4; cursor: not-allowed; }
+.community-card.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,145,61,0.35); }
+.card-label {
+  font-family: 'Crimson Text', serif;
+  font-size: 0.58rem;
+  color: #888;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* ── BUTTONS ── */
+.btn-primary {
+  display: block;
+  width: 100%;
+  background: linear-gradient(135deg, #3d1505, #6b2a0a);
+  border: 1px solid var(--gold-dim);
+  border-radius: 3px;
+  padding: 12px;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gold-light);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #5a2008, #8b3810);
+  box-shadow: 0 5px 16px rgba(0,0,0,0.5);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border-ornate);
+  border-radius: 3px;
+  padding: 9px;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sepia);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+.btn-secondary:hover { background: rgba(107,76,30,0.1); }
+
+/* ── ADVISOR PANEL (right column, full height) ── */
+.advisor-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .advisor-panel { grid-column: 1; grid-row: auto; }
+}
+
+/* ── ADVICE BOX ── */
+.advice-box {
+  background: var(--felt);
+  border: 2px solid var(--felt-highlight);
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.4), 0 4px 20px rgba(0,0,0,0.5);
+  flex: 1;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+.advice-header {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+.advice-action {
+  text-align: center;
+  margin-bottom: 16px;
+}
+.action-badge {
+  display: inline-block;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 10px 28px;
+  border-radius: 3px;
+  border: 2px solid currentColor;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+.action-badge.RAISE  { color: #f87171; border-color: #f87171; text-shadow: 0 0 12px rgba(248,113,113,0.5); }
+.action-badge.CALL   { color: #86efac; border-color: #86efac; text-shadow: 0 0 12px rgba(134,239,172,0.4); }
+.action-badge.CHECK  { color: #93c5fd; border-color: #93c5fd; text-shadow: 0 0 12px rgba(147,197,253,0.4); }
+.action-badge.FOLD   { color: #d1d5db; border-color: #d1d5db; }
+.action-badge.WAIT   { color: var(--gold); border-color: var(--gold-dim); font-size: 1rem; padding: 14px 20px; }
+
+.advice-amount {
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  color: var(--cream-dim);
+  text-align: center;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+.advice-reasoning {
+  background: rgba(0,0,0,0.2);
+  border-left: 3px solid var(--gold-dim);
+  border-radius: 0 3px 3px 0;
+  padding: 12px 14px;
+  margin-top: 4px;
+  flex: 1;
+}
+.advice-reasoning p {
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  color: var(--cream);
+  line-height: 1.65;
+  margin-bottom: 8px;
+}
+.advice-reasoning p:last-child { margin-bottom: 0; }
+.advice-reasoning strong { color: var(--gold-light); font-weight: 600; }
+
+/* ── HAND LOG ── */
+.hand-log {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.hand-log::-webkit-scrollbar { width: 4px; }
+.hand-log::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 2px; }
+.log-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.75rem;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.log-entry {
+  font-family: 'Crimson Text', serif;
+  font-size: 0.88rem;
+  color: var(--cream-dim);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-street {
+  color: var(--gold);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.log-action-text { color: var(--cream); }
+.log-empty { color: rgba(255,255,255,0.25); font-style: italic; text-align: center; font-size: 0.9rem; padding: 8px 0; }
+
+/* ── STREET INDICATOR ── */
+.street-indicator {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.street-pip {
+  width: 28px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: background 0.3s;
+}
+.street-pip.active   { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+.street-pip.complete { background: var(--gold-dim); }
+
+/* ── POT / STATS ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.stat-box {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 3px;
+  padding: 8px;
+  text-align: center;
+}
+.stat-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--gold-dim);
+  display: block;
+  margin-bottom: 3px;
+}
+.stat-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cream);
+}
+
+/* ── HAND STRENGTH METER ── */
+.strength-bar-wrap {
+  margin: 10px 0;
+}
+.strength-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.strength-bar-track {
+  height: 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.strength-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease, background 0.4s ease;
+  background: linear-gradient(90deg, #4ade80, #fbbf24);
+}
+
+/* ── RESPONSIVE TWEAKS ── */
+@media (max-width: 480px) {
+  .picker-ranks { grid-template-columns: repeat(5, 1fr); }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+}
+</style>
 </head>
 <body>
 
-  <!-- Help Button -->
-  <button class="btn" type="button" id="helpBtn">Poker Help</button>
-  <!-- Advice Button -->
-  <button class="btn" type="button" id="openAdvice">AI Exploit Advice</button>
+<header>
+  <span class="header-ornament">♠ ♥ ♦ ♣</span>
+  <h1>RDR2 Poker Advisor</h1>
+  <p class="subtitle">Texas Hold'em Strategy for the Frontier Saloon</p>
+  <div class="header-rule"></div>
+</header>
 
-  <!-- Help Modal -->
-  <div id="helpModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2>Poker Helper Guide</h2>
-      <p><strong>Street:</strong> The stage of the hand (Preflop, Flop, Turn, River).</p>
-      <p><strong>Bet to Call:</strong> The amount you must match to stay in the hand.</p>
-      <p><strong>Planned Raise Size:</strong> The amount you want to raise to if you’re ahead.</p>
-      <p>
-        <strong>Positions:</strong>
-        <ul>
-          <li><b>UTG/UTG+1</b>: (UTG = Under the Gun) First to act, play tight.</li>
-          <li><b>MP</b>: Middle seats, play a bit wider.</li>
-          <li><b>CO/Button</b>: (CO = Cut-off, Button = dealer) Late positions, best spots, play more hands.</li>
-          <li><b>Small Blind/Big Blind</b>: Forced bets, tough spots, play carefully.</li>
-        </ul>
-      </p>
-      <p>
-        <strong>Board Cards:</strong>
-        <ul>
-          <li><b>Flop</b>: First 3 community cards. Most hands are decided here — if you hit a pair or a strong draw, keep going.</li>
-          <li><b>Turn</b>: Fourth card. Strengthens or kills your draws. If you improve, bet; if not, be cautious.</li>
-          <li><b>River</b>: Fifth and final card. Final showdown, no more drawing — you either have a made hand or you fold.</li>
-        </ul>
-      </p>
-      <p>
-        <strong>Poker shorthand terms:</strong>
-        <ul>
-          <li><b>s</b>: same suit</li>
-          <li><b>o</b>: off suit</li>
-          <li><b>AKs</b>: Ace and King, same suit</li>
-          <li><b>JTo</b>: Jack and Ten, off suits</li>
-          <li><b>77</b>: Pair of Sevens</li>
-          <li><b>94o</b>: Weak, unconnected, offsuit hand</li>
-        </ul>
-      </p>
-    </div>
-  </div>
+<div class="main-layout">
 
-  <!-- Advice Modal -->
-  <div id="adviceModal" class="modal">
-    <div class="modal-content">
-      <span class="close-btn" id="closeAdvice">&times;</span>
-      <h2>Poker Advice & Strategy</h2>
+  <!-- LEFT COLUMN: Inputs -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
 
-      <p><strong>AI Weakness #1 — They Fold Too Much to Raises</strong><br>
-      Raise preflop with almost anything. Continuation bet the flop. Most NPCs fold unless they hit.</p>
+    <!-- Setup Panel -->
+    <div class="panel">
+      <div class="panel-title">Hand Setup</div>
 
-      <p><strong>AI Weakness #2 — They Overpay When They Hit</strong><br>
-      When you hit a strong hand, value bet big. NPCs call with top pair, draws, two pair, and weak holdings.</p>
-
-     <p><strong>RDR2 Exploit Strategy Loop</strong><br>
-<b>Preflop:</b><br>
-• If nobody has raised yet → <b>YOU raise regardless any two cards</b> (AI folds too often).<br>
-• If someone already raised → <b>tighten up</b> and only continue with strong hands.<br><br>
-
-<b>Flop:</b><br>
-• If they check to you → <b>make a continuation bet</b> (they fold too much).<br>
-• If they bet into you → <b>call the flop</b> (AI rarely bluffs the flop and overpays later).<br><br>
-
-<b>Turn:</b><br>
-• If you improve → <b>bet big</b> (they call with weak pairs and draws).<br>
-• If you miss and face pressure → <b>fold</b> (AI bets strong hands on turn).<br><br>
-
-<b>River:</b><br>
-• <b>Do not bluff</b> (AI calls too often).<br>
-• If you have a strong hand → <b>value bet big</b> (they overpay with worse hands).</p>
-
-      <p><strong>NPC Behavior Patterns</strong><br>
-      Tight = folds to pressure<br>
-      Loose = calls too much<br>
-      Aggressive = bluffs more<br>
-      Passive = rarely bluffs</p>
-    </div>
-  </div>
-
-  <h1>RDR2 Poker Helper (Texas Hold’em)</h1>
-    <strong style="font-size: 0.8em; display: block;">
-    by Gary Langley
-  </strong>
-  <p class="hint">Enter the table state. The helper uses preflop ranges, made-hand checks, draw detection, and pot odds to suggest Fold / Call / Raise.</p>
-
-  <div class="card-cheatsheet">
-    <div>
-      <strong>♠ Spades</strong>
-      <ul><li>2s</li><li>3s</li><li>4s</li><li>5s</li><li>6s</li>
-          <li>7s</li><li>8s</li><li>9s</li><li>Ts</li><li>Js</li>
-          <li>Qs</li><li>Ks</li><li>As</li></ul>
-    </div>
-    <div>
-      <strong>♥ Hearts</strong>
-      <ul><li>2h</li><li>3h</li><li>4h</li><li>5h</li><li>6h</li>
-          <li>7h</li><li>8h</li><li>9h</li><li>Th</li><li>Jh</li>
-          <li>Qh</li><li>Kh</li><li>Ah</li></ul>
-    </div>
-    <div>
-      <strong>♦ Diamonds</strong>
-      <ul><li>2d</li><li>3d</li><li>4d</li><li>5d</li><li>6d</li>
-          <li>7d</li><li>8d</li><li>9d</li><li>Td</li><li>Jd</li>
-          <li>Qd</li><li>Kd</li><li>Ad</li></ul>
-    </div>
-    <div>
-      <strong>♣ Clubs</strong>
-      <ul><li>2c</li><li>3c</li><li>4c</li><li>5c</li><li>6c</li>
-          <li>7c</li><li>8c</li><li>9c</li><li>Tc</li><li>Jc</li>
-          <li>Qc</li><li>Kc</li><li>Ac</li></ul>
-    </div>
-  </div>
-
-  <form id="pokerForm">
-    <fieldset>
-      <legend>Table and street</legend>
-      <div class="row">
-        <div>
-          <label for="players">Number of players</label>
-          <input id="players" type="number" min="2" max="10" value="4"/>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Players at Table</label>
+          <select id="numPlayers">
+            <option value="2">2 Players</option>
+            <option value="3">3 Players</option>
+            <option value="4" selected>4 Players</option>
+            <option value="5">5 Players</option>
+            <option value="6">6 Players</option>
+          </select>
         </div>
-        <div>
-          <label for="position">Your position</label>
+        <div class="field-group">
+          <label>Your Position</label>
           <select id="position">
-            <option value="EP">Early (UTG/UTG+1)</option>
-            <option value="MP" selected>Middle</option>
-            <option value="LP">Late (CO/Button)</option>
-            <option value="SB">Small Blind</option>
-            <option value="BB">Big Blind</option>
+            <option value="BTN">BTN (Button)</option>
+            <option value="CO">CO (Cutoff)</option>
+            <option value="MP">MP (Mid Position)</option>
+            <option value="UTG">UTG (Under the Gun)</option>
+            <option value="SB">SB (Small Blind)</option>
+            <option value="BB">BB (Big Blind)</option>
           </select>
         </div>
       </div>
-      <div class="row">
-        <div>
-          <label for="street">Street</label>
-          <select id="street">
-            <option value="preflop" selected>Preflop</option>
-            <option value="flop">Flop</option>
-            <option value="turn">Turn</option>
-            <option value="river">River</option>
-          </select>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label>Current Pot ($)</label>
+          <input type="number" id="potSize" placeholder="e.g. 1.34" step="0.01" min="0" value="" />
         </div>
-        <div>
-          <label for="pot">Current pot (chips or $)</label>
-          <input id="pot" type="number" min="0" step="0.01" value="0"/>
+        <div class="field-group">
+          <label>Amount to Call ($)</label>
+          <input type="number" id="callAmount" placeholder="0 = no bet" step="0.01" min="0" value="0" />
         </div>
       </div>
-    </fieldset>
 
-    <fieldset>
-      <legend>Your cards</legend>
-      <div class="row">
-        <div>
-          <label for="hole1">Hole card 1 (e.g., As)</label>
-          <input id="hole1" placeholder="As, Kh, 7d, etc." />
-        </div>
-        <div>
-          <label for="hole2">Hole card 2</label>
-          <input id="hole2" placeholder="Kh, Qs, 2c, etc." />
+      <div class="field-group">
+        <label>Street</label>
+        <select id="street" onchange="onStreetChange()">
+          <option value="preflop">Preflop</option>
+          <option value="flop">Flop</option>
+          <option value="turn">Turn</option>
+          <option value="river">River</option>
+        </select>
+      </div>
+
+      <!-- Hole Cards -->
+      <div class="field-group">
+        <label>Your Hole Cards</label>
+        <div class="card-selector">
+          <div class="card-slot">
+            <div class="card-display empty" id="holeCard1Display" onclick="openPicker('hole1')">+</div>
+          </div>
+          <div class="card-slot">
+            <div class="card-display empty" id="holeCard2Display" onclick="openPicker('hole2')">+</div>
+          </div>
         </div>
       </div>
-    </fieldset>
 
-    <fieldset>
-      <legend>Board cards (as needed)</legend>
-      <div class="row">
-        <div>
-          <label for="flop1">Flop 1</label>
-          <input id="flop1" placeholder="e.g., 9h"/>
+      <button class="btn-primary" onclick="getAdvice()">Get Advice</button>
+      <button class="btn-secondary" onclick="resetHand()">✕ Reset Hand</button>
+    </div>
+
+    <!-- Community Cards Panel -->
+    <div class="panel" id="communityPanel">
+      <div class="panel-title">Community Cards</div>
+      <p style="font-size:0.85rem;color:var(--sepia);text-align:center;margin-bottom:12px;font-style:italic;">
+        Click a card slot to set it. Cards unlock as the street advances.
+      </p>
+      <div class="community-row">
+        <div style="text-align:center">
+          <div class="community-card empty" id="cc0" onclick="openPicker('cc0')">+<div class="card-label">Flop 1</div></div>
         </div>
-        <div>
-          <label for="flop2">Flop 2</label>
-          <input id="flop2" placeholder="e.g., Th"/>
+        <div style="text-align:center">
+          <div class="community-card empty" id="cc1" onclick="openPicker('cc1')">+<div class="card-label">Flop 2</div></div>
         </div>
-      </div>
-      <div class="row">
-        <div>
-          <label for="flop3">Flop 3</label>
-          <input id="flop3" placeholder="e.g., Jh"/>
+        <div style="text-align:center">
+          <div class="community-card empty" id="cc2" onclick="openPicker('cc2')">+<div class="card-label">Flop 3</div></div>
         </div>
-        <div>
-          <label for="turn">Turn</label>
-          <input id="turn" placeholder="e.g., Qh"/>
+        <div style="text-align:center">
+          <div class="community-card empty locked" id="cc3">+<div class="card-label">Turn</div></div>
         </div>
-      </div>
-      <div class="row">
-        <div>
-          <label for="river">River</label>
-          <input id="river" placeholder="e.g., Kh"/>
-        </div>
-        <div>
-          <label for="betToCall">Bet to call</label>
-          <input id="betToCall" type="number" min="0" step="0.01" value="0"/>
+        <div style="text-align:center">
+          <div class="community-card empty locked" id="cc4">+<div class="card-label">River</div></div>
         </div>
       </div>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>Action preferences</legend>
-      <div class="row">
-        <div>
-          <label for="plannedRaise">Planned raise size</label>
-          <input id="plannedRaise" type="number" min="0" step="0.01" value="0"/>
+  </div><!-- end left column -->
+
+  <!-- RIGHT COLUMN: Advisor -->
+  <div class="advisor-panel">
+
+    <div class="advice-box">
+      <div class="advice-header">⚑ Advisor</div>
+
+      <div class="street-indicator">
+        <div class="street-pip active" id="pip-preflop" title="Preflop"></div>
+        <div class="street-pip" id="pip-flop" title="Flop"></div>
+        <div class="street-pip" id="pip-turn" title="Turn"></div>
+        <div class="street-pip" id="pip-river" title="River"></div>
+      </div>
+
+      <div class="stats-row" id="statsRow">
+        <div class="stat-box">
+          <span class="stat-label">Pot</span>
+          <span class="stat-value" id="statPot">—</span>
         </div>
-        <div>
-          <label for="aggression">Aggression (0=tight, 1=std, 2=loose)</label>
-          <select id="aggression">
-            <option value="0">0 (tight)</option>
-            <option value="1" selected>1 (standard)</option>
-            <option value="2">2 (loose)</option>
-          </select>
+        <div class="stat-box">
+          <span class="stat-label">Pot Odds</span>
+          <span class="stat-value" id="statOdds">—</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Hand Str.</span>
+          <span class="stat-value" id="statStr">—</span>
         </div>
       </div>
-    </fieldset>
 
-    <button class="btn" type="button" id="recommendBtn">Get recommendation</button>
-    <button class="btn" type="button" id="resetAllBtn">Reset All</button>
-    <button class="btn" type="button" id="resetKeepCardsBtn">Reset Except Cards</button>
-  </form>
+      <div class="strength-bar-wrap">
+        <div class="strength-bar-label">
+          <span>Weak</span>
+          <span id="strengthLabel">Hand Strength</span>
+          <span>Strong</span>
+        </div>
+        <div class="strength-bar-track">
+          <div class="strength-bar-fill" id="strengthBar" style="width:0%"></div>
+        </div>
+      </div>
 
-  <div class="result" id="result" style="margin-top:16px; display:none"></div>
+      <div class="advice-action">
+        <span class="action-badge WAIT" id="actionBadge">Enter your hand</span>
+      </div>
+      <div class="advice-amount" id="adviceAmount"></div>
 
-  <script>
-    // ===== Modal logic =====
-    const helpModal = document.getElementById("helpModal");
-    const helpBtn = document.getElementById("helpBtn");
-    const closeBtn = document.querySelector(".close");
+      <div class="advice-reasoning" id="adviceReasoning">
+        <p>Fill in your hand details on the left and press <strong>Get Advice</strong> to receive frontier wisdom.</p>
+        <p>The advisor accounts for <strong>RDR2's AI tendencies</strong>: loose calls, passive play, rare bluffs, and a love of top pair.</p>
+      </div>
+    </div>
 
-    const adviceModal = document.getElementById("adviceModal");
-    const openAdvice = document.getElementById("openAdvice");
-    const closeAdvice = document.getElementById("closeAdvice");
+    <!-- Hand Log -->
+    <div class="advice-box" style="min-height:0;flex:none;padding:16px;">
+      <div class="hand-log">
+        <div class="log-title">Hand History</div>
+        <div id="logEntries"><div class="log-empty">No actions yet this hand.</div></div>
+      </div>
+    </div>
 
-    // Help modal open/close
-    helpBtn.addEventListener("click", () => {
-      helpModal.style.display = "block";
-    });
-    closeBtn.addEventListener("click", () => {
-      helpModal.style.display = "none";
-    });
+  </div><!-- end right column -->
 
-    // Advice modal open/close
-    openAdvice.addEventListener("click", () => {
-      adviceModal.style.display = "block";
-    });
-    closeAdvice.addEventListener("click", () => {
-      adviceModal.style.display = "none";
-    });
+</div><!-- end main layout -->
 
-    // Click outside to close either modal
-    window.addEventListener("click", (event) => {
-      if (event.target === helpModal) {
-        helpModal.style.display = "none";
-      }
-      if (event.target === adviceModal) {
-        adviceModal.style.display = "none";
-      }
-    });
+<!-- Card Picker Modal -->
+<div class="picker-overlay" id="pickerOverlay">
+  <div class="picker-box">
+    <div class="picker-title" id="pickerTitle">Select a Card</div>
+    <div class="picker-suits" id="pickerSuits">
+      <button class="suit-btn active" data-suit="hearts"   onclick="selectSuit('hearts')">♥</button>
+      <button class="suit-btn"        data-suit="diamonds" onclick="selectSuit('diamonds')">♦</button>
+      <button class="suit-btn"        data-suit="clubs"    onclick="selectSuit('clubs')">♣</button>
+      <button class="suit-btn"        data-suit="spades"   onclick="selectSuit('spades')">♠</button>
+    </div>
+    <div class="picker-ranks" id="pickerRanks"></div>
+    <button class="picker-cancel" onclick="closePicker()">Cancel</button>
+  </div>
+</div>
 
-    // ===== Card parsing helpers =====
-    const rankOrder = "23456789TJQKA".split("");
-    const suits = ["s","h","d","c"];
+<script>
+// =============================================
+// RDR2 POKER ADVISOR — LOGIC
+// =============================================
 
-    function parseCard(s) {
-      if (!s) return null;
-      s = s.trim().toUpperCase();
-      s = s.replace(/\s+/g, "");
-      const r = s[0];
-      const rawSuit = s[1]?.toLowerCase();
-      const rOk = "23456789TJQKA".includes(r);
-      const sOk = suits.includes(rawSuit);
-      if (!rOk || !sOk) return null;
-      return { r, s: rawSuit };
-    }
+// ── STATE ──────────────────────────────────
+const state = {
+  holeCards: [null, null],
+  communityCards: [null, null, null, null, null], // cc0..cc4
+  handLog: [],
+};
 
-    function rankValue(r) { return rankOrder.indexOf(r); }
+let pickerTarget = null;
+let pickerSuit   = 'hearts';
 
-    // ===== Range model (simple, tunable) =====
-    const openRanges = {
-      EP: new Set([
-        "AA","KK","QQ","JJ","TT","AKs","AQs","AJs","KQs","AKo","AQo","99"
-      ]),
-      MP: new Set([
-        "AA","KK","QQ","JJ","TT","99","88","AKs","AQs","AJs","ATs","KQs","KJs",
-        "QJs","AKo","AQo","AJo"
-      ]),
-      LP: new Set([
-        "AA","KK","QQ","JJ","TT","99","88","77","AKs","AQs","AJs","ATs","A9s",
-        "KQs","KJs","KTs","QJs","QTs","JTs","T9s","98s","AKo","AQo","AJo","ATo","KQo"
-      ]),
-      SB: new Set([
-        "AA","KK","QQ","JJ","TT","99","88","AKs","AQs","AJs","ATs","KQs","QJs","AKo","AQo","AJo"
-      ]),
-      BB: new Set([
-        "AA","KK","QQ","JJ","TT","99","88","77","66","AKs","AQs","AJs","ATs",
-        "KQs","KJs","QJs","JTs","T9s","98s","AKo","AQo","AJo","ATo","KQo"
-      ])
-    };
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const RANK_VAL = {'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14};
+const SUIT_SYMBOL = { hearts:'♥', diamonds:'♦', clubs:'♣', spades:'♠' };
 
-    function comboTag(c1, c2) {
-      const r1 = c1.r, r2 = c2.r;
-      const suited = c1.s === c2.s ? "s" : "o";
-      const hi = rankValue(r1) >= rankValue(r2) ? r1 : r2;
-      const lo = hi === r1 ? r2 : r1;
-      if (r1 === r2) return r1 + r2;
-      return hi + lo + suited;
-    }
-
- /* ===== Hand Evaluation Helpers ===== */
-
-// Robust straight detection (handles 7 cards, duplicates, wheel)
-function hasStraight(values) {
-  const uniq = [...new Set(values)].sort((a, b) => a - b);
-
-  // Wheel: treat Ace (12) as -1 for A-2-3-4-5
-  if (uniq.includes(12)) uniq.unshift(-1);
-
-  let run = 1;
-  for (let i = 1; i < uniq.length; i++) {
-    if (uniq[i] === uniq[i - 1] + 1) {
-      run++;
-      if (run >= 5) return true;
-    } else {
-      run = 1;
-    }
-  }
-  return false;
+// ── STREET MANAGEMENT ──────────────────────
+function onStreetChange() {
+  const street = document.getElementById('street').value;
+  updateCommunityLocks(street);
+  updateStreetPips(street);
 }
 
-function evaluateMadeHand(cards) {
-  const bySuit = { s: 0, h: 0, d: 0, c: 0 };
-  const counts = {};
-  const values = cards.map(c => rankValue(c.r)).sort((a, b) => a - b);
+function updateCommunityLocks(street) {
+  const unlocked = { preflop:[],  flop:[0,1,2], turn:[0,1,2,3], river:[0,1,2,3,4] };
+  const allowed = unlocked[street] || [];
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById(`cc${i}`);
+    if (allowed.includes(i)) {
+      el.classList.remove('locked');
+      el.style.cursor = 'pointer';
+      el.onclick = () => openPicker(`cc${i}`);
+    } else {
+      el.classList.add('locked');
+      el.style.cursor = 'not-allowed';
+      el.onclick = null;
+    }
+  }
+}
 
-  cards.forEach(c => {
-    bySuit[c.s]++;
-    counts[c.r] = (counts[c.r] || 0) + 1;
+function updateStreetPips(street) {
+  const streets = ['preflop','flop','turn','river'];
+  const idx = streets.indexOf(street);
+  streets.forEach((s, i) => {
+    const pip = document.getElementById(`pip-${s}`);
+    pip.classList.toggle('active', i === idx);
+    pip.classList.toggle('complete', i < idx);
+  });
+}
+
+// ── CARD PICKER ────────────────────────────
+function openPicker(target) {
+  pickerTarget = target;
+  pickerSuit   = 'hearts';
+  document.getElementById('pickerTitle').textContent =
+    target.startsWith('cc') ? 'Select Community Card' : 'Select Hole Card';
+  document.getElementById('pickerOverlay').classList.add('open');
+  renderSuits();
+  renderRanks();
+}
+
+function closePicker() {
+  document.getElementById('pickerOverlay').classList.remove('open');
+  pickerTarget = null;
+}
+
+function selectSuit(suit) {
+  pickerSuit = suit;
+  renderSuits();
+  renderRanks();
+}
+
+function renderSuits() {
+  document.querySelectorAll('.suit-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.suit === pickerSuit);
+  });
+}
+
+function usedCards() {
+  const used = [];
+  state.holeCards.forEach(c => { if (c) used.push(c.rank + c.suit); });
+  state.communityCards.forEach(c => { if (c) used.push(c.rank + c.suit); });
+  return used;
+}
+
+function renderRanks() {
+  const container = document.getElementById('pickerRanks');
+  const used = usedCards();
+  // Exclude the currently targeted card from "used"
+  const currentCard = getCardForTarget(pickerTarget);
+  const currentKey  = currentCard ? currentCard.rank + currentCard.suit : null;
+
+  container.innerHTML = '';
+  RANKS.forEach(rank => {
+    const key = rank + pickerSuit;
+    const btn = document.createElement('button');
+    btn.className = 'rank-btn' + (used.includes(key) && key !== currentKey ? ' used' : '');
+    btn.textContent = rank;
+    if (pickerSuit === 'hearts' || pickerSuit === 'diamonds') btn.style.color = '#8b1a1a';
+    btn.onclick = () => pickCard(rank, pickerSuit);
+    container.appendChild(btn);
+  });
+}
+
+function getCardForTarget(target) {
+  if (!target) return null;
+  if (target === 'hole1') return state.holeCards[0];
+  if (target === 'hole2') return state.holeCards[1];
+  const idx = parseInt(target.replace('cc',''));
+  return state.communityCards[idx];
+}
+
+function pickCard(rank, suit) {
+  const card = { rank, suit };
+  if (pickerTarget === 'hole1') {
+    state.holeCards[0] = card;
+    renderHoleCard('holeCard1Display', card);
+  } else if (pickerTarget === 'hole2') {
+    state.holeCards[1] = card;
+    renderHoleCard('holeCard2Display', card);
+  } else if (pickerTarget && pickerTarget.startsWith('cc')) {
+    const idx = parseInt(pickerTarget.replace('cc',''));
+    state.communityCards[idx] = card;
+    renderCommunityCard(idx, card);
+  }
+  closePicker();
+}
+
+function renderHoleCard(elId, card) {
+  const el = document.getElementById(elId);
+  el.className = `card-display ${card.suit} selected`;
+  el.innerHTML = `<span style="font-size:1.6rem">${SUIT_SYMBOL[card.suit]}</span><span style="font-size:1rem;font-weight:700">${card.rank}</span>`;
+  el.onclick = () => openPicker(elId === 'holeCard1Display' ? 'hole1' : 'hole2');
+}
+
+function renderCommunityCard(idx, card) {
+  const el = document.getElementById(`cc${idx}`);
+  const labels = ['Flop 1','Flop 2','Flop 3','Turn','River'];
+  el.className = `community-card ${card.suit} selected`;
+  el.innerHTML = `${SUIT_SYMBOL[card.suit]}<span style="font-size:0.85rem;font-weight:700;display:block">${card.rank}</span><div class="card-label">${labels[idx]}</div>`;
+}
+
+// ── HAND EVALUATION ────────────────────────
+function cardVal(card) { return RANK_VAL[card.rank]; }
+
+function evaluateHand(hole, community) {
+  // Returns { rank: 0-9, name, strength: 0-100 }
+  const all = [...hole, ...community].filter(Boolean);
+  if (all.length < 2) return { rank: 0, name: 'Unknown', strength: 0 };
+
+  const combos = getCombinations(all, Math.min(all.length, 5));
+  let best = { rank: -1, name: '', strength: 0 };
+  combos.forEach(combo => {
+    const result = scoreHand(combo);
+    if (result.rank > best.rank || (result.rank === best.rank && result.tiebreak > (best.tiebreak||0))) {
+      best = result;
+    }
+  });
+  return best;
+}
+
+function getCombinations(arr, k) {
+  if (k === arr.length) return [arr];
+  if (k === 1) return arr.map(x => [x]);
+  const result = [];
+  for (let i = 0; i <= arr.length - k; i++) {
+    const rest = getCombinations(arr.slice(i+1), k-1);
+    rest.forEach(combo => result.push([arr[i], ...combo]));
+  }
+  return result;
+}
+
+function scoreHand(cards) {
+  const vals   = cards.map(c => cardVal(c)).sort((a,b) => b-a);
+  const suits  = cards.map(c => c.suit);
+  const ranks  = cards.map(c => c.rank);
+
+  const isFlush     = cards.length === 5 && suits.every(s => s === suits[0]);
+  const isStraight  = cards.length === 5 && checkStraight(vals);
+  const isRoyal     = isFlush && isStraight && vals[0] === 14;
+  const counts      = countOccurrences(vals);
+  const countVals   = Object.values(counts).sort((a,b) => b-a);
+
+  if (isRoyal)                                    return { rank:9, name:'Royal Flush',     strength:100, tiebreak:vals[0] };
+  if (isFlush && isStraight)                      return { rank:8, name:'Straight Flush',  strength:95,  tiebreak:vals[0] };
+  if (countVals[0] === 4)                         return { rank:7, name:'Four of a Kind',  strength:88,  tiebreak:vals[0] };
+  if (countVals[0] === 3 && countVals[1] === 2)   return { rank:6, name:'Full House',      strength:80,  tiebreak:vals[0] };
+  if (isFlush)                                    return { rank:5, name:'Flush',           strength:72,  tiebreak:vals[0] };
+  if (isStraight)                                 return { rank:4, name:'Straight',        strength:64,  tiebreak:vals[0] };
+  if (countVals[0] === 3)                         return { rank:3, name:'Three of a Kind', strength:55,  tiebreak:vals[0] };
+  if (countVals[0] === 2 && countVals[1] === 2)   return { rank:2, name:'Two Pair',        strength:42,  tiebreak:vals[0] };
+  if (countVals[0] === 2)                         return { rank:1, name:'Pair',            strength:28,  tiebreak:vals[0] };
+  return                                                 { rank:0, name:'High Card',       strength:Math.round((vals[0]/14)*20), tiebreak:vals[0] };
+}
+
+function checkStraight(sortedVals) {
+  for (let i = 0; i < sortedVals.length-1; i++) {
+    if (sortedVals[i] - sortedVals[i+1] !== 1) {
+      // Check A-2-3-4-5 wheel
+      if (i === 0 && sortedVals[0] === 14) {
+        const low = sortedVals.slice(1);
+        return low[0]===5 && low[1]===4 && low[2]===3 && low[3]===2;
+      }
+      return false;
+    }
+  }
+  return true;
+}
+
+function countOccurrences(arr) {
+  return arr.reduce((acc, v) => { acc[v] = (acc[v]||0)+1; return acc; }, {});
+}
+
+// ── PREFLOP HAND CATEGORY ──────────────────
+function preflopHandRank(hole) {
+  if (!hole[0] || !hole[1]) return { tier: 0, desc: 'Unknown' };
+  const [a, b] = [hole[0], hole[1]].sort((x,y) => cardVal(y) - cardVal(x));
+  const av = cardVal(a), bv = cardVal(b);
+  const suited   = a.suit === b.suit;
+  const paired   = av === bv;
+  const gap      = av - bv;
+
+  if (paired) {
+    if (av >= 10) return { tier: 5, desc: 'Premium Pair (TT+)' };
+    if (av >= 7)  return { tier: 4, desc: 'Mid Pair (77-99)' };
+    return              { tier: 3, desc: 'Low Pair (22-66)' };
+  }
+  if (av === 14 && bv >= 10) return { tier: 5, desc: 'Big Ace (AJ+)' };
+  if (av === 14 && bv >= 7)  return { tier: 4, desc: 'Medium Ace' };
+  if (av === 14)             return { tier: 3, desc: 'Small Ace' };
+  if (av >= 10 && bv >= 10)  return { tier: 5, desc: 'Big Broadways (KQ, KJ, QJ)' };
+  if (av >= 10 && gap <= 1 && suited) return { tier: 4, desc: 'Suited Connectors (High)' };
+  if (gap <= 1 && suited)    return { tier: 3, desc: 'Suited Connectors' };
+  if (av >= 10 && bv >= 8)   return { tier: 3, desc: 'Offsuit Broadway' };
+  if (gap <= 1)              return { tier: 2, desc: 'Off-suit Connectors' };
+  return                          { tier: 1, desc: 'Weak Hand' };
+}
+
+// ── DRAW DETECTION ─────────────────────────
+function detectDraws(hole, community) {
+  const draws = [];
+  const all = [...hole, ...community].filter(Boolean);
+  if (all.length < 3) return draws;
+
+  // Flush draw
+  const suitCounts = {};
+  all.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit]||0)+1);
+  if (Object.values(suitCounts).some(v => v === 4)) draws.push('Flush Draw');
+  if (Object.values(suitCounts).some(v => v >= 3 && hole.some(h => h && h.suit === Object.keys(suitCounts).find(s => suitCounts[s] === v)))) {}
+
+  // Straight draw
+  const vals = [...new Set(all.map(c => cardVal(c)))].sort((a,b)=>a-b);
+  for (let i = 0; i < vals.length - 3; i++) {
+    const slice = vals.slice(i, i+4);
+    if (slice[3] - slice[0] <= 4 && new Set(slice).size === 4) {
+      draws.push('Straight Draw');
+      break;
+    }
+  }
+  return draws;
+}
+
+// ── POT ODDS ───────────────────────────────
+function calcPotOdds(pot, call) {
+  if (!call || call <= 0) return null;
+  return (call / (pot + call) * 100).toFixed(0);
+}
+
+// ── POSITION BONUS ─────────────────────────
+function positionScore(pos) {
+  return { BTN:5, CO:4, MP:2, UTG:1, SB:2, BB:1 }[pos] || 1;
+}
+
+// ── RDR2 AI PROFILE ────────────────────────
+// RDR2 NPCs: loose-passive, call too wide, almost never bluff on river,
+// over-value top pair, slow-play less than real players, rare 3-bets.
+function getRDR2Advice(params) {
+  const { street, position, numPlayers, pot, call, hole, community } = params;
+  const posScore = positionScore(position);
+  const potOdds  = calcPotOdds(pot, call);
+  const draws    = detectDraws(hole, community);
+  const hasDraw  = draws.length > 0;
+
+  // ── PREFLOP ──
+  if (street === 'preflop') {
+    const { tier, desc } = preflopHandRank(hole);
+    const suited = hole[0] && hole[1] && hole[0].suit === hole[1].suit;
+
+    let action, amount, reasoning, strength;
+
+    if (tier === 5) {
+      // Premium — always raise
+      action = 'RAISE';
+      const raiseAmt = (pot * 3).toFixed(2);
+      amount = `Raise to ~$${raiseAmt} (3x pot)`;
+      strength = 85 + posScore;
+      reasoning = [
+        `<strong>${desc}</strong> is a premium hand. In RDR2, the AI calls raises frequently preflop — punish them by raising 3x the pot.`,
+        `From <strong>${position}</strong>, you have ${posScore >= 4 ? 'excellent late' : 'acceptable'} position. Build the pot now while you're ahead.`,
+        `RDR2 opponents rarely 3-bet, so expect flat calls. You'll be in a strong spot heading to the flop.`
+      ];
+    } else if (tier === 4) {
+      if (call > 0 && potOdds > 35) {
+        action = 'CALL';
+        amount = `Call $${call.toFixed(2)}`;
+        strength = 60;
+        reasoning = [
+          `<strong>${desc}</strong> is solid but pot odds of ${potOdds}% are tight. The AI in RDR2 can wake up with strong hands here.`,
+          `A flat call keeps the pot manageable${suited ? ' — your flush equity adds value.' : '.'}`,
+        ];
+      } else {
+        action = 'RAISE';
+        const raiseAmt = call > 0 ? (call*2.5).toFixed(2) : (pot*2.5).toFixed(2);
+        amount = `Raise to ~$${raiseAmt}`;
+        strength = 70;
+        reasoning = [
+          `<strong>${desc}</strong> plays best with initiative. RDR2 AI folds weaker hands to a raise${posScore >= 3 ? ' and your position is strong' : ''}.`,
+          `With ${numPlayers} players, a raise narrows the field to hands you dominate.`
+        ];
+      }
+    } else if (tier === 3) {
+      if (call === 0) {
+        action = posScore >= 3 ? 'RAISE' : 'CHECK';
+        amount = posScore >= 3 ? `Raise to ~$${(pot*2).toFixed(2)} (2x pot)` : 'Check / Limp';
+        strength = 45;
+        reasoning = [
+          `<strong>${desc}</strong> is playable from ${position}. ${posScore >= 3 ? 'In late position with no bet in front, a small raise builds the pot and gives you initiative.' : 'Check or limp to see a cheap flop.'}`,
+          `RDR2 AI limps often preflop — if you raise from late position they'll often fold or just call.`
+        ];
+      } else if (potOdds < 25) {
+        action = 'CALL';
+        amount = `Call $${call.toFixed(2)}`;
+        strength = 38;
+        reasoning = [
+          `Pot odds of ${potOdds}% are good enough for <strong>${desc}</strong>. RDR2 AI rarely bluffs preflop so the bet is usually real — but you have equity.`,
+          `Play cautiously post-flop unless you improve.`
+        ];
+      } else {
+        action = 'FOLD';
+        amount = '';
+        strength = 20;
+        reasoning = [
+          `At ${potOdds}% pot odds with <strong>${desc}</strong>, the math doesn't support continuing.`,
+          `RDR2 AI that bets here likely has a strong hand. Save your money.`
+        ];
+      }
+    } else if (tier === 2) {
+      action = call > 0 ? 'FOLD' : 'CHECK';
+      amount = '';
+      strength = 18;
+      reasoning = [
+        `<strong>${desc}</strong> doesn't have the raw strength to profitably continue against a bet.`,
+        `RDR2 AI doesn't bluff enough preflop to make this a profitable call. Fold or check to see a free flop.`
+      ];
+    } else {
+      action = call > 0 ? 'FOLD' : 'CHECK';
+      amount = '';
+      strength = 8;
+      reasoning = [
+        `<strong>${desc}</strong> should be folded to any significant action.`,
+        `In RDR2, even weak AI hands will outdraw you often enough that this isn't worth the chips.`
+      ];
+    }
+
+    return { action, amount, reasoning, strength: Math.min(100, strength), draws: [] };
+  }
+
+  // ── POST-FLOP (flop, turn, river) ──
+  const handResult = evaluateHand(hole, community);
+  const { rank, name: handName, strength: rawStrength } = handResult;
+  let strength = rawStrength;
+  let action, amount, reasoning;
+
+  // Pot odds check
+  const potOddsNum = potOdds ? parseInt(potOdds) : 0;
+
+  // Adjust for draws
+  if (hasDraw && rank < 2) {
+    strength += draws.includes('Flush Draw') ? 20 : 12;
+    strength = Math.min(strength, 60);
+  }
+
+  // Adjust for position
+  strength += posScore * 2;
+
+  // Street factor — hand strength means more on the river
+  const riverFactor = { preflop:0.7, flop:0.85, turn:0.95, river:1.0 }[street] || 1;
+  strength = Math.round(strength * riverFactor);
+  strength = Math.min(100, Math.max(0, strength));
+
+  // ── RDR2 AI awareness ──
+  // On river: AI RARELY bluffs. If there's a big bet on river, lean toward believing it.
+  // AI calls with top pair very often (over-values it).
+  // AI is prone to calling down with strong draws even if they don't hit.
+
+  if (rank >= 6) {
+    // Monster hand — extract value
+    if (call > 0) {
+      action = 'RAISE';
+      const raiseAmt = (call * 2.5 + pot * 0.5).toFixed(2);
+      amount = `Raise to ~$${raiseAmt}`;
+    } else {
+      action = street === 'river' ? 'RAISE' : 'RAISE';
+      amount = `Bet ~$${(pot * 0.75).toFixed(2)} (3/4 pot)`;
+    }
+    reasoning = [
+      `<strong>${handName}</strong> is an extremely strong hand. In RDR2, AI opponents over-value top pair and two pair — they will call you down.`,
+      `${street === 'river' ? 'On the river, extract maximum value. AI almost never bluffs river, so a reraise here is safe.' : 'Build the pot now. The AI will follow you to the river with worse hands.'}`,
+      `From <strong>${position}</strong>, you control the action. Keep the pressure on.`
+    ];
+  } else if (rank === 5) {
+    // Flush
+    action = call > 0 && potOddsNum < 40 ? 'CALL' : (call > 0 ? 'RAISE' : 'RAISE');
+    amount = call > 0 ? `Raise to ~$${(call*2.2).toFixed(2)}` : `Bet ~$${(pot*0.65).toFixed(2)}`;
+    reasoning = [
+      `A <strong>Flush</strong> is a powerful hand in RDR2 — AI rarely folds when they hit any piece of the board, which means you'll get paid.`,
+      `${street === 'river' ? 'On the river, make a strong value bet. AI river calls are very common.' : 'Don\'t slow-play. Put in a solid bet.'}`,
+    ];
+  } else if (rank === 4) {
+    // Straight — be cautious of flush boards
+    const communitySet = community.filter(Boolean);
+    const suitCounts = {};
+    communitySet.forEach(c => suitCounts[c.suit] = (suitCounts[c.suit]||0)+1);
+    const flushBoard = Object.values(suitCounts).some(v => v >= 3);
+    action = call > 0 && flushBoard ? 'CALL' : (call > 0 ? 'RAISE' : 'RAISE');
+    amount = call > 0 && flushBoard ? `Call $${call.toFixed(2)}` : (call > 0 ? `Raise to ~$${(call*2).toFixed(2)}` : `Bet ~$${(pot*0.6).toFixed(2)}`);
+    reasoning = [
+      `A <strong>Straight</strong> is a strong hand. ${flushBoard ? '⚠️ The board has a flush possibility — an AI raising here might have it.' : 'No flush board — you\'re in great shape.'}`,
+      `RDR2 AI will call a straight with two pair or a set, thinking they're ahead. Bet for value.`
+    ];
+  } else if (rank === 3) {
+    // Three of a kind
+    action = call > 0 && potOddsNum > 45 ? 'CALL' : 'RAISE';
+    amount = call > 0 ? `Raise to ~$${(Math.max(call,pot)*0.8).toFixed(2)}` : `Bet ~$${(pot*0.55).toFixed(2)}`;
+    reasoning = [
+      `<strong>Three of a Kind</strong> is a strong hand in RDR2. AI players will call this down with pairs and two pairs.`,
+      `Bet with confidence${posScore >= 3 ? ' — your position lets you size up.' : '.'}`
+    ];
+  } else if (rank === 2) {
+    // Two pair
+    action = call === 0 ? 'RAISE' : (potOddsNum < 35 ? 'CALL' : (potOddsNum < 50 ? 'CALL' : 'FOLD'));
+    const raiseAmt = (pot * 0.5).toFixed(2);
+    amount = action === 'RAISE' ? `Bet ~$${raiseAmt} (half pot)` : (action === 'CALL' ? `Call $${call.toFixed(2)}` : '');
+    reasoning = [
+      `<strong>Two Pair</strong> is a good hand in RDR2, where AI players over-value single pairs.`,
+      call > 0
+        ? `Pot odds are ${potOdds}%. ${potOddsNum < 35 ? 'Good value to call, but be wary of raises behind.' : potOddsNum < 50 ? 'Borderline — calling is fine.' : 'Tough spot. Two pair loses to better two pairs, sets, and straights.'}`
+        : `Bet to build the pot. AI will call with top pair thinking they\'re good.`,
+      street === 'river' && call > 0 && potOddsNum > 45
+        ? `⚠️ On the river, RDR2 AI almost never bluffs. A big bet here may mean they have a stronger hand. Fold is an option.`
+        : ''
+    ].filter(Boolean);
+  } else if (rank === 1) {
+    // One pair
+    const isTopPair = community.filter(Boolean).length > 0 &&
+      community.filter(Boolean).some(c => cardVal(c) <= Math.max(cardVal(hole[0]||{rank:'2'}), cardVal(hole[1]||{rank:'2'})));
+
+    if (call === 0) {
+      action = hasDraw ? 'RAISE' : 'CHECK';
+      amount = hasDraw ? `Bet ~$${(pot*0.4).toFixed(2)} (semi-bluff)` : '';
+      reasoning = [
+        `<strong>Pair</strong> ${isTopPair ? '(Top Pair)' : ''} — ${hasDraw ? 'You have a draw to go with your pair. A semi-bluff bet has two ways to win.' : 'Check to control the pot. You don\'t want to bloat the pot with only a pair.'}`,
+        `RDR2 AI checks back marginal hands frequently — a check may give you a free card.`
+      ];
+    } else {
+      const callPct = potOddsNum;
+      if (callPct < 25) {
+        action = 'CALL';
+        amount = `Call $${call.toFixed(2)}`;
+        reasoning = [
+          `<strong>Pair</strong> at ${callPct}% pot odds is worth calling. RDR2 AI bets weakly with drawing hands often.`,
+          `Keep the pot small — don't re-raise here.`
+        ];
+      } else if (callPct < 40 && hasDraw) {
+        action = 'CALL';
+        amount = `Call $${call.toFixed(2)}`;
+        reasoning = [
+          `Pair + <strong>${draws.join(', ')}</strong> gives you enough outs to justify calling at ${callPct}% pot odds.`,
+          `If you miss your draw on the next street, reconsider. RDR2 AI bets harder when they hit.`
+        ];
+      } else if (street === 'river') {
+        action = 'FOLD';
+        amount = '';
+        reasoning = [
+          `<strong>One Pair</strong> on the river facing a bet is dangerous in RDR2. AI players almost never bluff the river.`,
+          `If the bet is more than a third of the pot, the AI likely has two pair or better. Fold is correct here.`
+        ];
+      } else {
+        action = callPct < 40 ? 'CALL' : 'FOLD';
+        amount = action === 'CALL' ? `Call $${call.toFixed(2)}` : '';
+        reasoning = [
+          `<strong>One Pair</strong> at ${callPct}% pot odds is ${action === 'CALL' ? 'just in range' : 'too expensive'}.`,
+          `RDR2 AI over-bets top pair. ${action === 'FOLD' ? 'A fold saves chips for better spots.' : 'A call is ok here — but fold to further aggression.'}`
+        ];
+      }
+    }
+  } else {
+    // High card
+    if (call === 0 && hasDraw) {
+      action = 'CHECK';
+      amount = '';
+      reasoning = [
+        `<strong>High Card</strong> with ${draws.join(' & ')} — check to see a free card.`,
+        `RDR2 AI checks back a lot in multi-way pots, giving you a free shot at your draw.`
+      ];
+    } else if (call === 0 && posScore >= 4 && numPlayers <= 3) {
+      action = 'RAISE';
+      amount = `Bluff bet ~$${(pot*0.5).toFixed(2)}`;
+      reasoning = [
+        `<strong>High Card</strong> in late position heads-up/3-handed can support a bluff. RDR2 AI folds to bets they can\'t beat.`,
+        `⚠️ This is a bluff — abandon ship if you face resistance.`
+      ];
+    } else {
+      action = call > 0 ? 'FOLD' : 'CHECK';
+      amount = '';
+      reasoning = [
+        `<strong>High Card</strong> has little showdown value. ${call > 0 ? 'Fold and wait for a better spot.' : 'Check and hope to improve.'}`,
+        call > 0 ? 'RDR2 AI doesn\'t bluff enough to make this call profitable.' : ''
+      ].filter(Boolean);
+    }
+  }
+
+  return {
+    action,
+    amount,
+    reasoning,
+    strength: Math.min(100, Math.max(0, strength)),
+    draws,
+    handName
+  };
+}
+
+// ── GET ADVICE (main entry) ─────────────────
+function getAdvice() {
+  const street     = document.getElementById('street').value;
+  const position   = document.getElementById('position').value;
+  const numPlayers = parseInt(document.getElementById('numPlayers').value);
+  const pot        = parseFloat(document.getElementById('potSize').value) || 0;
+  const call       = parseFloat(document.getElementById('callAmount').value) || 0;
+  const hole       = state.holeCards;
+  const community  = state.communityCards;
+
+  // Validate
+  if (!hole[0] || !hole[1]) {
+    showAdvice({ action:'WAIT', amount:'', reasoning:['<strong>Please select both hole cards</strong> before requesting advice.'], strength:0, draws:[] });
+    return;
+  }
+
+  const advice = getRDR2Advice({ street, position, numPlayers, pot, call, hole, community });
+
+  // Eval hand name for log
+  const handResult = evaluateHand(hole, community);
+  const handName   = street === 'preflop' ? preflopHandRank(hole).desc : handResult.name;
+
+  showAdvice(advice);
+  addLog(street, advice.action, handName, pot, call, advice.amount);
+
+  // Update pot display
+  document.getElementById('statPot').textContent = `$${pot.toFixed(2)}`;
+  document.getElementById('statOdds').textContent = call > 0 ? `${calcPotOdds(pot,call)}%` : '—';
+  document.getElementById('statStr').textContent  = handResult.name || '—';
+}
+
+function showAdvice(advice) {
+  const badge = document.getElementById('actionBadge');
+  badge.textContent = advice.action;
+  badge.className   = `action-badge ${advice.action}`;
+
+  document.getElementById('adviceAmount').textContent = advice.amount || '';
+
+  const draws = advice.draws && advice.draws.length > 0
+    ? `<p>🎯 <strong>Draws detected:</strong> ${advice.draws.join(', ')}</p>` : '';
+
+  document.getElementById('adviceReasoning').innerHTML =
+    advice.reasoning.map(r => `<p>${r}</p>`).join('') + draws;
+
+  const bar = document.getElementById('strengthBar');
+  bar.style.width = advice.strength + '%';
+  bar.style.background = advice.strength > 65
+    ? 'linear-gradient(90deg, #4ade80, #22c55e)'
+    : advice.strength > 35
+    ? 'linear-gradient(90deg, #fbbf24, #f59e0b)'
+    : 'linear-gradient(90deg, #f87171, #ef4444)';
+
+  document.getElementById('strengthLabel').textContent =
+    advice.strength > 65 ? 'Strong Hand' : advice.strength > 35 ? 'Moderate Hand' : 'Weak Hand';
+}
+
+function addLog(street, action, handName, pot, call, amount) {
+  const entry = { street, action, handName, pot, call, amount };
+  state.handLog.push(entry);
+
+  const container = document.getElementById('logEntries');
+  if (container.querySelector('.log-empty')) container.innerHTML = '';
+
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `
+    <span class="log-street">${street}</span>
+    <span class="log-action-text">${action}${amount ? ' — ' + amount : ''} (${handName}, pot $${pot.toFixed(2)}${call > 0 ? `, call $${call.toFixed(2)}` : ''})</span>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── RESET ──────────────────────────────────
+function resetHand() {
+  state.holeCards = [null, null];
+  state.communityCards = [null, null, null, null, null];
+  state.handLog = [];
+
+  // Reset hole card displays
+  ['holeCard1Display','holeCard2Display'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'card-display empty';
+    el.innerHTML = '+';
+    el.onclick = () => openPicker(i === 0 ? 'hole1' : 'hole2');
   });
 
-  const isFlush = Object.values(bySuit).some(v => v >= 5);
-  const straight = hasStraight(values);
+  // Reset community cards
+  const labels = ['Flop 1','Flop 2','Flop 3','Turn','River'];
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById(`cc${i}`);
+    el.className = 'community-card empty';
+    el.innerHTML = `+<div class="card-label">${labels[i]}</div>`;
+  }
 
-  const freq = Object.values(counts).sort((a, b) => b - a);
-  const hasFour = freq.includes(4);
-  const hasTrips = freq.includes(3);
-  const pairCount = freq.filter(x => x === 2).length;
+  // Reset inputs
+  document.getElementById('potSize').value   = '';
+  document.getElementById('callAmount').value = '0';
+  document.getElementById('street').value    = 'preflop';
+  onStreetChange();
 
-  if (isFlush && straight) return { cat: "Straight flush", strength: 7 };
-  if (hasFour) return { cat: "Four of a kind", strength: 6 };
-  if (hasTrips && pairCount >= 1) return { cat: "Full house", strength: 5 };
-  if (isFlush) return { cat: "Flush", strength: 4 };
-  if (straight) return { cat: "Straight", strength: 3 };
-  if (hasTrips) return { cat: "Three of a kind", strength: 2 };
-  if (pairCount >= 2) return { cat: "Two pair", strength: 1.5 };
-  if (pairCount >= 1) return { cat: "One pair", strength: 1 };
-  return { cat: "High card", strength: 0 };
+  // Reset advisor
+  document.getElementById('actionBadge').textContent = 'Enter your hand';
+  document.getElementById('actionBadge').className   = 'action-badge WAIT';
+  document.getElementById('adviceAmount').textContent = '';
+  document.getElementById('adviceReasoning').innerHTML =
+    '<p>Fill in your hand details on the left and press <strong>Get Advice</strong> to receive frontier wisdom.</p><p>The advisor accounts for <strong>RDR2\'s AI tendencies</strong>: loose calls, passive play, rare bluffs, and a love of top pair.</p>';
+  document.getElementById('strengthBar').style.width = '0%';
+  document.getElementById('strengthLabel').textContent = 'Hand Strength';
+  document.getElementById('statPot').textContent  = '—';
+  document.getElementById('statOdds').textContent = '—';
+  document.getElementById('statStr').textContent  = '—';
+  document.getElementById('logEntries').innerHTML = '<div class="log-empty">No actions yet this hand.</div>';
 }
 
-function detectDraws(cards) {
-  const bySuit = { s: 0, h: 0, d: 0, c: 0 };
-  cards.forEach(c => bySuit[c.s]++);
-
-  const flushDraw = Object.values(bySuit).some(v => v === 4);
-
-  const values = cards.map(c => rankValue(c.r)).sort((a, b) => a - b);
-  const uniq = [...new Set(values)];
-
-  let oesd = false, gutshot = false;
-
-  for (let i = 0; i <= uniq.length - 4; i++) {
-    const a = uniq[i], b = uniq[i + 1], c = uniq[i + 2], d = uniq[i + 3];
-    if (a + 1 === b && b + 1 === c) {
-      if (c + 1 === d) oesd = true;
-      else if (c + 2 === d) gutshot = true;
-    }
-  }
-
-  // Wheel draws (A-2-3-4-5)
-  if (uniq.includes(12)) {
-    const low = [0, 1, 2, 3].filter(v => uniq.includes(v)).length;
-    if (low === 4) oesd = true;
-    if (low === 3) gutshot = true;
-  }
-
-  return { flushDraw, oesd, gutshot };
-}
-
-/* ===== Pot odds and outs ===== */
-function potOdds(pot, betToCall) {
-  if (betToCall <= 0) return 0;
-  return betToCall / (pot + betToCall);
-}
-
-function outsToEquity(outs, street) {
-  if (street === "flop") return Math.min(1, outs * 0.04);
-  if (street === "turn") return Math.min(1, outs * 0.02);
-  return 0;
-}
-
-function countOuts(draws) {
-  if (draws.flushDraw) return 9;
-  if (draws.oesd) return 8;
-  if (draws.gutshot) return 4;
-  return 0;
-}
-
-/* ===== Recommendation engine ===== */
-function recommendAction(state) {
-  const { street, players, position, hole, board, pot, betToCall, plannedRaise, aggression } = state;
-
-  // Validate hole cards
-  if (!hole[0] || !hole[1]) {
-    return { action: "Input needed", why: "Enter both hole cards.", tags: [] };
-  }
-
-  // Build all cards for postflop
-  const allCards = [...hole, ...board.filter(Boolean)];
-
-  /* === PREFLOP === */
-if (street === "preflop") {
-  const tag = comboTag(hole[0], hole[1]);
-  const range = openRanges[position];
-  const inRange = range.has(tag);
-  const facingBet = betToCall > 0;
-
-  // Suited connectors auto-open in LP (must run BEFORE inRange logic)
-  if (!facingBet && position === "LP") {
-    const suitedConnector = ["54","65","76","87","98","T9","JTs"].some(
-      sc => tag.startsWith(sc) && tag.endsWith("s")
-    );
-    if (suitedConnector) {
-      return {
-        action: "Raise",
-        why: `Playable suited connector ${tag} in late position.`,
-        tags: ["Preflop", tag, "SC"]
-      };
-    }
-  }
-
-  // No raise yet → open-raise or fold
-  if (!facingBet) {
-    if (inRange) {
-      return {
-        action: "Raise",
-        why: `Open-raise ${tag} from ${position}.`,
-        tags: ["Preflop", tag, position]
-      };
-    }
-    return {
-      action: "Fold",
-      why: `${tag} too weak to open from ${position}.`,
-      tags: ["Preflop", tag, position]
-    };
-  }
-
-  // Facing a raise preflop
-  const premium = ["AA","KK","QQ","JJ","AKs","AQs","AKo"];
-  if (premium.includes(tag)) {
-    return {
-      action: "Raise",
-      why: `3-bet premium ${tag} vs raise.`,
-      tags: ["Preflop", tag, "VsRaise"]
-    };
-  }
-
-  if (inRange && players <= 4 && aggression >= 1) {
-    return {
-      action: "Call",
-      why: `Defend ${tag} vs raise in small field.`,
-      tags: ["Preflop", tag, "Defend"]
-    };
-  }
-
-  return {
-    action: "Fold",
-    why: `Fold ${tag} vs raise from ${position}.`,
-    tags: ["Preflop", tag, "Tight"]
-  };
-}
-
-  /* === POSTFLOP === */
-  if (allCards.length < 5 && street !== "river") {
-    return { action: "Input needed", why: "Add board cards for flop/turn.", tags: ["Postflop"] };
-  }
-
-  const made = evaluateMadeHand(allCards);
-  const draws = detectDraws(allCards);
-  const facingBet = betToCall > 0;
-
-  const strongMade = made.strength >= 2;      // trips+
-  const mediumMade = made.strength >= 1 && made.strength < 2; // one pair / two pair
-  const hasDraw = draws.flushDraw || draws.oesd || draws.gutshot;
-
-  /* === NO BET TO CALL === */
-  if (!facingBet) {
-    if (strongMade) {
-      return { action: "Raise", why: `Value bet with ${made.cat}.`, tags: [street, made.cat, "NoBet"] };
-    }
-    if (hasDraw && aggression >= 1 && plannedRaise > 0) {
-      return { action: "Raise", why: "Semi-bluff your draw when checked to.", tags: [street, "Draw", "SemiBluff"] };
-    }
-    return {
-      action: "Check",
-      why: `Pot control with ${made.cat}${hasDraw ? " / take a free card" : ""}.`,
-      tags: [street, made.cat, "CheckBack"]
-    };
-  }
-
-  /* === FACING A BET === */
-  if (hasDraw && (street === "flop" || street === "turn")) {
-    const outs = countOuts(draws);
-    const eq = outsToEquity(outs, street);
-    const po = potOdds(pot, betToCall);
-
-    if (eq >= po) {
-      if (aggression >= 1 && plannedRaise > 0) {
-        return {
-          action: "Raise",
-          why: `Semi-bluff: equity≈${(eq * 100).toFixed(1)}% ≥ pot odds≈${(po * 100).toFixed(1)}%.`,
-          tags: [street, "Draw", "SemiBluff"]
-        };
-      }
-      return {
-        action: "Call",
-        why: `Pot odds: equity≈${(eq * 100).toFixed(1)}% ≥ ${(po * 100).toFixed(1)}%.`,
-        tags: [street, "Draw", "Call"]
-      };
-    }
-
-    return {
-      action: "Fold",
-      why: `Insufficient odds: equity≈${(eq * 100).toFixed(1)}% < ${(po * 100).toFixed(1)}%.`,
-      tags: [street, "Draw", "Fold"]
-    };
-  }
-
-  // With made hands: raise strong, call medium, fold weak
-  if (strongMade) {
-    return { action: "Raise", why: `Punish bets with ${made.cat}.`, tags: [street, made.cat, "ValueRaise"] };
-  }
-
-  if (mediumMade) {
-    if (players >= 5 && aggression === 0) {
-      return { action: "Fold", why: `Multiway + ${made.cat} is vulnerable.`, tags: [street, made.cat, "TightFold"] };
-    }
-    return { action: "Call", why: `Control pot with ${made.cat}.`, tags: [street, made.cat, "PotControl"] };
-  }
-
-  return { action: "Fold", why: `High card vs bet: fold.`, tags: [street, made.cat, "Fold"] };
-}
-
-/* ===== Wiring ===== */
-const el = id => document.getElementById(id);
-
-function gatherState() {
-  const hole = [parseCard(el("hole1").value), parseCard(el("hole2").value)];
-  const board = [
-    parseCard(el("flop1").value),
-    parseCard(el("flop2").value),
-    parseCard(el("flop3").value),
-    parseCard(el("turn").value),
-    parseCard(el("river").value)
-  ];
-  return {
-    players: Number(el("players").value || 0),
-    position: el("position").value,
-    street: el("street").value,
-    hole,
-    board,
-    pot: Number(el("pot").value || 0),
-    betToCall: Number(el("betToCall").value || 0),
-    plannedRaise: Number(el("plannedRaise").value || 0),
-    aggression: Number(el("aggression").value || 1)
-  };
-}
-
-el("recommendBtn").addEventListener("click", () => {
-  const state = gatherState();
-  const rec = recommendAction(state);
-  const res = el("result");
-  res.style.display = "block";
-  res.innerHTML = `
-    <div class="badge">Players: ${state.players}</div>
-    <div class="badge">Pos: ${state.position}</div>
-    <div class="badge">Street: ${state.street}</div>
-    <h2>Recommendation: ${rec.action}</h2>
-    <p>${rec.why}</p>
-    <p class="hint">Tags: ${rec.tags.join(" • ")}</p>
-    ${state.plannedRaise > 0 && rec.action === "Raise" ? `<p class="hint">Raise size: ${state.plannedRaise}</p>` : ""}
-    <p class="hint">Note: This is a simplified helper. Adjust ranges and thresholds for your table.</p>
-  `;
-});
-
-// FULL RESET — clears everything
-document.getElementById("resetAllBtn").addEventListener("click", () => {
-  document.getElementById("players").value = "";
-  document.getElementById("street").value = "preflop";
-  document.getElementById("pot").value = "";
-  document.getElementById("betToCall").value = "";
-  document.getElementById("plannedRaise").value = "";
-
-  // Hole cards
-  document.getElementById("hole1").value = "";
-  document.getElementById("hole2").value = "";
-
-  // Board cards
-  document.getElementById("flop1").value = "";
-  document.getElementById("flop2").value = "";
-  document.getElementById("flop3").value = "";
-  document.getElementById("turn").value = "";
-  document.getElementById("river").value = "";
-
-  // Clear result box
-  document.getElementById("result").style.display = "none";
-  document.getElementById("result").innerHTML = "";
-});
-
-// PARTIAL RESET — keeps hole cards + board cards
-document.getElementById("resetKeepCardsBtn").addEventListener("click", () => {
-  document.getElementById("players").value = "";
-  document.getElementById("street").value = "preflop";
-  document.getElementById("pot").value = "";
-  document.getElementById("betToCall").value = "";
-  document.getElementById("plannedRaise").value = "";
-
-  // Clear result box
-  document.getElementById("result").style.display = "none";
-  document.getElementById("result").innerHTML = "";
-});
+// ── INIT ───────────────────────────────────
+onStreetChange();
 </script>
 </body>
 </html>
